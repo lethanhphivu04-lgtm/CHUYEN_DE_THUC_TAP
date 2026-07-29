@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { addressService } from '../../_lib/api';
+import { addressService } from '../../../_lib/api';
 
 export default function AddressesPage() {
   const [addresses, setAddresses] = useState([]);
