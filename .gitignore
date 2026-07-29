@@ -1,0 +1,43 @@
+# User requested exclusions
+.agents/
+howitwork/
+skills-lock.json
+
+# IDEs & System files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+
+# Frontend (Node / Next.js)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+frontend/.env*
+frontend/.vercel
+frontend/*.tsbuildinfo
+
+# Backend (.NET / C#)
+# Build folders
+backend/*/bin/
+backend/*/obj/
+bin/
+obj/
+# OS metadata
+[Dd]ebug/
+[Rr]elease/
+# User-specific files
+*.userprefs
+*.docstates
+
+# Publish output
+backend/*/publish/
