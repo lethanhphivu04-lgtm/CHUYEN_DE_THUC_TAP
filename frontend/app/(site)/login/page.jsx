@@ -9,6 +9,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -29,7 +30,7 @@ export default function LoginPage() {
       const data = await authService.login(email, password);
       // Success, trigger navigation and header update
       window.dispatchEvent(new Event('authChange'));
-      
+
       if (data.user && data.user.roles && data.user.roles.includes('Admin')) {
         router.push('/admin');
       } else {
@@ -38,7 +39,7 @@ export default function LoginPage() {
     } catch (err) {
       console.error(err);
       setError(
-        err.response?.data?.message || 
+        err.response?.data?.message ||
         'Đăng nhập thất bại. Vui lòng kiểm tra lại email và mật khẩu.'
       );
     } finally {
