@@ -1,6 +1,8 @@
 using System.Text;
 using Marketplace.Core.Entities;
+using Marketplace.Core.Interfaces;
 using Marketplace.Infrastructure.Data;
+using Marketplace.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -73,6 +75,7 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddTransient<IEmailService, EmailService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
