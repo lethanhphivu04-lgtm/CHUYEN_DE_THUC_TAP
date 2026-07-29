@@ -30,6 +30,11 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
+        if (string.IsNullOrEmpty(dto.Email) || !dto.Email.EndsWith("@gmail.com", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Email đăng ký bắt buộc phải có đuôi @gmail.com." });
+        }
+
         var existingUser = await _userManager.FindByEmailAsync(dto.Email);
         if (existingUser != null)
             return BadRequest(new { message = "Email đã được sử dụng." });

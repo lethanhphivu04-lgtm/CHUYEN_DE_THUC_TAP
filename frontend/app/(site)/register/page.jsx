@@ -26,21 +26,21 @@ export default function RegisterPage() {
       return;
     }
     let score = 0;
-    if (password.length >= 6) score += 1;
-    if (password.length >= 10) score += 1;
-    if (/[0-9]/.test(password)) score += 1;
+    if (password.length >= 8 && password.length <= 15) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
     if (/[A-Z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
     if (/[^a-zA-Z0-9]/.test(password)) score += 1;
 
     let text = '';
     let color = '';
     let textColor = '';
 
-    if (score <= 2) {
+    if (score <= 3) {
       text = 'Yếu 🔴';
       color = 'bg-red-500';
       textColor = 'text-red-500';
-    } else if (score <= 4) {
+    } else if (score === 4) {
       text = 'Trung bình 🟡';
       color = 'bg-amber-500';
       textColor = 'text-amber-500';
@@ -66,6 +66,37 @@ export default function RegisterPage() {
     setError('');
     setSuccess('');
 
+    // 1. Email format check
+    if (!/@gmail\.com$/i.test(email)) {
+      setError('Email đăng ký bắt buộc phải có đuôi @gmail.com.');
+      return;
+    }
+
+    // 2. Password length check
+    if (password.length < 8 || password.length > 15) {
+      setError('Mật khẩu phải từ 8 đến 15 ký tự.');
+      return;
+    }
+
+    // 3. Password content checks
+    if (!/[A-Z]/.test(password)) {
+      setError('Mật khẩu phải chứa ít nhất một chữ cái viết hoa (A-Z).');
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('Mật khẩu phải chứa ít nhất một chữ cái viết thường (a-z).');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Mật khẩu phải chứa ít nhất một chữ số (0-9).');
+      return;
+    }
+    if (!/[^a-zA-Z0-9]/.test(password)) {
+      setError('Mật khẩu phải chứa ít nhất một ký tự đặc biệt (ví dụ: !, @, #, $, ...).');
+      return;
+    }
+
+    // 4. Password confirmation check
     if (password !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp.');
       return;
@@ -155,7 +186,7 @@ export default function RegisterPage() {
 
              <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-0.5">
-                Mật khẩu (tối thiểu 6 ký tự)
+                Mật khẩu (8-15 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt)
               </label>
               <div className="relative">
                 <input

@@ -28,11 +28,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequiredLength = 6;
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 8;
     options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -105,6 +105,38 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    // Seed Admin
+    var adminUser = await userManager.FindByEmailAsync("admin@gmail.com");
+    if (adminUser == null)
+    {
+        adminUser = new ApplicationUser
+        {
+            UserName = "admin@gmail.com",
+            Email = "admin@gmail.com",
+            FullName = "Hệ Thống Admin",
+            EmailConfirmed = true
+        };
+        await userManager.CreateAsync(adminUser, "Admin123!");
+        await userManager.AddToRoleAsync(adminUser, "Admin");
+    }
+
+    // Seed Customer/Member
+    var customerUser = await userManager.FindByEmailAsync("customer@gmail.com");
+    if (customerUser == null)
+    {
+        customerUser = new ApplicationUser
+        {
+            UserName = "customer@gmail.com",
+            Email = "customer@gmail.com",
+            FullName = "Nguyễn Văn Khách",
+            EmailConfirmed = true
+        };
+        await userManager.CreateAsync(customerUser, "Member123!");
+        await userManager.AddToRoleAsync(customerUser, "Member");
+    }
+
     // Seed Categories and Products
     if (!await context.Categories.AnyAsync())
     {
@@ -116,16 +148,16 @@ using (var scope = app.Services.CreateScope())
         await context.SaveChangesAsync();
 
         // Seed a sample Seller
-        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var sellerUser = await userManager.FindByEmailAsync("seller@hitumarket.vn");
+        var sellerUser = await userManager.FindByEmailAsync("seller@gmail.com");
         if (sellerUser == null)
         {
             sellerUser = new ApplicationUser
             {
-                UserName = "seller@hitumarket.vn",
-                Email = "seller@hitumarket.vn",
+                UserName = "seller@gmail.com",
+                Email = "seller@gmail.com",
                 FullName = "Nguyễn Văn Người Bán",
-                IsSeller = true
+                IsSeller = true,
+                EmailConfirmed = true
             };
             await userManager.CreateAsync(sellerUser, "Seller123!");
             await userManager.AddToRoleAsync(sellerUser, "Seller");
