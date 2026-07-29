@@ -89,4 +89,58 @@ export const addressService = {
   },
 };
 
+export const categoryService = {
+  async getAll() {
+    const response = await api.get('/categories');
+    return response.data;
+  },
+
+  async getTree() {
+    const response = await api.get('/categories/tree');
+    return response.data;
+  },
+
+  async getById(id) {
+    const response = await api.get(`/categories/${id}`);
+    return response.data;
+  },
+
+  async create(categoryData) {
+    const response = await api.post('/categories', categoryData);
+    return response.data;
+  },
+
+  async update(id, categoryData) {
+    const response = await api.put(`/categories/${id}`, categoryData);
+    return response.data;
+  },
+
+  async delete(id) {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data;
+  },
+};
+
+export const productService = {
+  async getProducts(params = {}) {
+    const response = await api.get('/products', { params });
+    return response.data;
+  },
+
+  async getProductById(id) {
+    const response = await api.get(`/products/${id}`);
+    return response.data;
+  },
+
+  async createProduct(productData) {
+    const response = await api.post('/products', productData);
+    return response.data;
+  },
+
+  async deleteProduct(id) {
+    const response = await api.delete(`/products/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
