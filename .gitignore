@@ -1,7 +1,3 @@
-# User requested exclusions
-.agents/
-howitwork/
-skills-lock.json
 
 # IDEs & System files
 .vs/

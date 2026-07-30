@@ -1,0 +1,64 @@
+# HITU MARKET — Tiến Độ Thực Hiện
+
+> File này được agent đọc tự động để biết cần làm gì tiếp theo.
+> `[x]` = đã hoàn thành, `[/]` = đang làm, `[ ]` = chưa làm.
+
+---
+
+## Phase 1: Hoàn thiện Module Cốt lõi
+
+- [x] 1.1 Admin Category CRUD (frontend gọi categoryService, hiển thị cây danh mục, thêm/sửa/xóa)
+- [x] 1.2 Admin Product Management (frontend bảng sản phẩm, filter, xem chi tiết, xóa)
+- [x] 1.3 Product Detail Page (đã hoàn thiện gallery, SKU selector, add to cart API)
+- [x] 1.4 Homepage với dữ liệu thật (gọi productService, hiển thị SP mới nhất, danh mục pills)
+
+## Phase 2: Giỏ hàng & Đặt hàng (Module 3 + 5)
+
+- [x] 2.1 Backend: Cart + CartItem entities
+- [x] 2.2 Backend: Order + SubOrder + OrderItem + OrderStatusHistory entities
+- [x] 2.3 Backend: Migration AddCartAndOrderSchema
+- [x] 2.4 Backend: CartsController (CRUD giỏ hàng, kiểm tra tồn kho, chặn seller tự mua hàng)
+- [x] 2.5 Backend: OrdersController (checkout tách đơn theo seller, lịch sử, hủy đơn, cập nhật trạng thái)
+- [x] 2.6 Frontend: Cart page (danh sách theo seller, +/- số lượng, xóa, tổng tiền)
+- [x] 2.7 Frontend: Checkout page (chọn địa chỉ, phương thức TT, xác nhận)
+- [x] 2.8 Frontend: Order history + timeline trạng thái (/profile/orders)
+
+## Phase 3: Thanh toán (Module 4)
+
+- [ ] 3.1 Backend: Payment + PaymentLog entities + migration
+- [ ] 3.2 Backend: PaymentsController (COD, VNPay callback)
+- [ ] 3.3 Frontend: Tích hợp payment vào checkout
+
+## Phase 4: Quản lý Người bán (Module 6)
+
+- [ ] 4.1 Backend: SellerWallet + WalletTransaction + WithdrawalRequest entities
+- [ ] 4.2 Backend: SellersController (đăng ký, CRUD SP, xem đơn, dashboard)
+- [ ] 4.3 Frontend: Admin duyệt seller
+- [ ] 4.4 Frontend: Seller dashboard + CRUD sản phẩm + xử lý đơn
+
+## Phase 5: Admin Nâng Cao (Module 11)
+
+- [ ] 5.1 Backend: Admin endpoints (user management, stats, audit log)
+- [ ] 5.2 Frontend: Admin user CRUD thật (lock/unlock, phân vai trò)
+- [ ] 5.3 Frontend: Admin dashboard thật (thống kê realtime)
+- [ ] 5.4 Frontend: Admin order management
+
+## Phase 6: Mở rộng (Modules 7, 8, 9)
+
+- [ ] 6.1 Voucher system (backend + frontend)
+- [ ] 6.2 Product Reviews & Ratings (backend + frontend)
+- [ ] 6.3 Wishlist (backend + frontend)
+- [ ] 6.4 Returns & Refunds (backend + frontend)
+
+## Phase 7: Thông báo & Nội dung (Module 10, 11)
+
+- [ ] 7.1 In-app Notifications (backend + frontend bell icon)
+- [ ] 7.2 Email notifications (đơn hàng, OTP)
+- [ ] 7.3 Banner management (backend + frontend carousel)
+- [ ] 7.4 Blog/Posts (backend + frontend)
+
+## Phase 8: Chatbot & Polish (Module 12)
+
+- [ ] 8.1 Chatbot widget (OpenAI API integration)
+- [ ] 8.2 Autocomplete search
+- [ ] 8.3 UI/UX polish toàn bộ
