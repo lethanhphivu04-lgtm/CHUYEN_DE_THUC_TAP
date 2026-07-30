@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { productService } from '../../../_lib/api';
+import { productService, cartService } from '../../../_lib/api';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -21,6 +21,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState('');
   const [cartSuccess, setCartSuccess] = useState(false);
+  const [addingToCart, setAddingToCart] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -54,7 +55,6 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!product || !product.skus) return;
 
-    // Find SKU matching current selection
     const matchedSku = product.skus.find(
       s => (s.color || '') === selectedColor && (s.size || '') === selectedSize
     );
@@ -70,17 +70,25 @@ export default function ProductDetailPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!selectedSku) {
       alert('Vui lòng chọn đầy đủ phân loại màu sắc và kích thước.');
       return;
     }
     
-    // Simulate adding to cart (Phase 4 will link to API)
-    setCartSuccess(true);
-    setTimeout(() => {
-      setCartSuccess(false);
-    }, 3000);
+    setAddingToCart(true);
+    try {
+      await cartService.addItem(selectedSku.id, quantity);
+      setCartSuccess(true);
+      setTimeout(() => {
+        setCartSuccess(false);
+      }, 4000);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Không thể thêm vào giỏ hàng. Vui lòng đăng nhập.';
+      alert(msg);
+    } finally {
+      setAddingToCart(false);
+    }
   };
 
   if (loading) {
@@ -107,14 +115,13 @@ export default function ProductDetailPage() {
     );
   }
 
-  // Get unique colors and sizes from skus
   const colors = [...new Set(product.skus.map(s => s.color).filter(Boolean))];
   const sizes = [...new Set(product.skus.map(s => s.size).filter(Boolean))];
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Breadcrumbs */}
-      <nav className="text-xs text-slate-500 mb-6 flex items-center space-x-2">
+      <nav className="text-xs text-slate-500 flex items-center space-x-2">
         <Link href="/" className="hover:text-indigo-600">Trang chủ</Link>
         <span>/</span>
         <Link href="/product" className="hover:text-indigo-600">Sản phẩm</Link>
@@ -266,24 +273,27 @@ export default function ProductDetailPage() {
 
               <button
                 onClick={handleAddToCart}
-                disabled={!selectedSku || selectedSku.stockQuantity <= 0}
-                className="flex-1 bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg text-sm hover:bg-indigo-700 active:scale-98 transition-all hover:scale-102 shadow-md cursor-pointer disabled:bg-slate-300 disabled:scale-100 disabled:shadow-none disabled:pointer-events-none"
+                disabled={!selectedSku || selectedSku.stockQuantity <= 0 || addingToCart}
+                className="flex-1 bg-indigo-600 text-white font-bold py-2.5 px-6 rounded-lg text-sm hover:bg-indigo-700 active:scale-98 transition-all hover:scale-102 shadow-md cursor-pointer disabled:bg-slate-300 disabled:scale-100 disabled:shadow-none disabled:pointer-events-none flex items-center justify-center space-x-2"
               >
-                {!selectedSku 
-                  ? 'Chọn phân loại' 
-                  : selectedSku.stockQuantity <= 0 
-                    ? 'Hết hàng' 
-                    : 'Thêm vào giỏ hàng'
-                }
+                {addingToCart ? (
+                  <span>Đang thêm...</span>
+                ) : !selectedSku ? (
+                  <span>Chọn phân loại</span>
+                ) : selectedSku.stockQuantity <= 0 ? (
+                  <span>Hết hàng</span>
+                ) : (
+                  <span>Thêm vào giỏ hàng</span>
+                )}
               </button>
             </div>
 
             {/* Cart Success Alert */}
             {cartSuccess && (
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-xs font-semibold flex items-center justify-between">
-                <span>✓ Đã thêm sản phẩm vào giỏ hàng! (Sẽ được xử lý trong Giai đoạn 4)</span>
+                <span>✓ Đã thêm sản phẩm vào giỏ hàng!</span>
                 <Link href="/cart" className="underline hover:text-emerald-800">
-                  Xem giỏ hàng
+                  Xem giỏ hàng →
                 </Link>
               </div>
             )}
@@ -292,7 +302,7 @@ export default function ProductDetailPage() {
       </div>
 
       {/* Description Tab */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm mt-8 space-y-4">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <h3 className="font-extrabold text-slate-900 text-lg border-b pb-3">Mô tả sản phẩm</h3>
         <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-line">
           {product.description}

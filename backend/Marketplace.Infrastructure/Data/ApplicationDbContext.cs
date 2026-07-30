@@ -17,6 +17,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductSku> ProductSkus => Set<ProductSku>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<Cart> Carts => Set<Cart>();
+    public DbSet<CartItem> CartItems => Set<CartItem>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<SubOrder> SubOrders => Set<SubOrder>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -87,6 +93,81 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasOne(e => e.Product)
                   .WithMany(p => p.Images)
                   .HasForeignKey(e => e.ProductId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Cart
+        builder.Entity<Cart>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<CartItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Cart)
+                  .WithMany(c => c.Items)
+                  .HasForeignKey(e => e.CartId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ProductSku)
+                  .WithMany()
+                  .HasForeignKey(e => e.ProductSkuId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Orders
+        builder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<SubOrder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SubTotal).HasPrecision(18, 2);
+            entity.HasOne(e => e.Order)
+                  .WithMany(o => o.SubOrders)
+                  .HasForeignKey(e => e.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Seller)
+                  .WithMany()
+                  .HasForeignKey(e => e.SellerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.PriceSnapshot).HasPrecision(18, 2);
+            entity.HasOne(e => e.SubOrder)
+                  .WithMany(so => so.Items)
+                  .HasForeignKey(e => e.SubOrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.ProductSku)
+                  .WithMany()
+                  .HasForeignKey(e => e.ProductSkuId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Product)
+                  .WithMany()
+                  .HasForeignKey(e => e.ProductId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<OrderStatusHistory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.SubOrder)
+                  .WithMany(so => so.StatusHistories)
+                  .HasForeignKey(e => e.SubOrderId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

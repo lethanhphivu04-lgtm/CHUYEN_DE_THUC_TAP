@@ -35,6 +35,7 @@ export default function ProfileLayout({ children }) {
   const navLinks = [
     { href: '/profile', label: '👤 Hồ sơ cá nhân' },
     { href: '/profile/addresses', label: '📍 Sổ địa chỉ' },
+    { href: '/profile/orders', label: '📦 Đơn hàng của tôi' },
   ];
 
   return (

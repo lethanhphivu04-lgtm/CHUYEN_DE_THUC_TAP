@@ -1,4 +1,4 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5087/api';
 
@@ -143,4 +143,49 @@ export const productService = {
   },
 };
 
+
+export const cartService = {
+  async getMyCart() {
+    const response = await api.get('/carts');
+    return response.data;
+  },
+
+  async addItem(productSkuId, quantity = 1) {
+    const response = await api.post('/carts', { productSkuId, quantity });
+    return response.data;
+  },
+
+  async updateQuantity(itemId, quantity) {
+    const response = await api.put('/carts/' + itemId, { quantity });
+    return response.data;
+  },
+
+  async removeItem(itemId) {
+    const response = await api.delete('/carts/' + itemId);
+    return response.data;
+  },
+};
+
+export const orderService = {
+  async checkout(addressId, paymentMethod = 'COD') {
+    const response = await api.post('/orders/checkout', { addressId, paymentMethod });
+    return response.data;
+  },
+
+  async getMyOrders() {
+    const response = await api.get('/orders');
+    return response.data;
+  },
+
+  async getOrder(id) {
+    const response = await api.get('/orders/' + id);
+    return response.data;
+  },
+
+  async cancelSubOrder(subOrderId) {
+    const response = await api.post('/orders/' + subOrderId + '/cancel');
+    return response.data;
+  },
+};
 export default api;
+
