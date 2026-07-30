@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Marketplace.Core.Entities;
 using Marketplace.Core.Interfaces;
 using Marketplace.Infrastructure.Data;
@@ -23,7 +23,7 @@ builder.Host.UseSerilog();
 // Add DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -115,7 +115,7 @@ using (var scope = app.Services.CreateScope())
         {
             UserName = "admin@gmail.com",
             Email = "admin@gmail.com",
-            FullName = "Hệ Thống Admin",
+            FullName = "Há»‡ Thá»‘ng Admin",
             EmailConfirmed = true
         };
         await userManager.CreateAsync(adminUser, "Admin123!");
@@ -130,7 +130,7 @@ using (var scope = app.Services.CreateScope())
         {
             UserName = "customer@gmail.com",
             Email = "customer@gmail.com",
-            FullName = "Nguyễn Văn Khách",
+            FullName = "Nguyá»…n VÄƒn KhÃ¡ch",
             EmailConfirmed = true
         };
         await userManager.CreateAsync(customerUser, "Member123!");
@@ -140,9 +140,9 @@ using (var scope = app.Services.CreateScope())
     // Seed Categories and Products
     if (!await context.Categories.AnyAsync())
     {
-        var electronics = new Category { Name = "Điện thoại & Máy tính", Description = "Thiết bị công nghệ chính hãng" };
-        var fashion = new Category { Name = "Thời trang & Phụ kiện", Description = "Thời trang nam nữ hiện đại" };
-        var home = new Category { Name = "Nhà cửa & Đời sống", Description = "Đồ gia dụng tiện ích" };
+        var electronics = new Category { Name = "Äiá»‡n thoáº¡i & MÃ¡y tÃ­nh", Description = "Thiáº¿t bá»‹ cÃ´ng nghá»‡ chÃ­nh hÃ£ng" };
+        var fashion = new Category { Name = "Thá»i trang & Phá»¥ kiá»‡n", Description = "Thá»i trang nam ná»¯ hiá»‡n Ä‘áº¡i" };
+        var home = new Category { Name = "NhÃ  cá»­a & Äá»i sá»‘ng", Description = "Äá»“ gia dá»¥ng tiá»‡n Ã­ch" };
 
         context.Categories.AddRange(electronics, fashion, home);
         await context.SaveChangesAsync();
@@ -155,7 +155,7 @@ using (var scope = app.Services.CreateScope())
             {
                 UserName = "seller@gmail.com",
                 Email = "seller@gmail.com",
-                FullName = "Nguyễn Văn Người Bán",
+                FullName = "Nguyá»…n VÄƒn NgÆ°á»i BÃ¡n",
                 IsSeller = true,
                 EmailConfirmed = true
             };
@@ -170,7 +170,7 @@ using (var scope = app.Services.CreateScope())
             {
                 UserId = sellerUser.Id,
                 ShopName = "HITU Official Store",
-                Description = "Cửa hàng chính hãng phân phối thiết bị và thời trang cao cấp.",
+                Description = "Cá»­a hÃ ng chÃ­nh hÃ£ng phÃ¢n phá»‘i thiáº¿t bá»‹ vÃ  thá»i trang cao cáº¥p.",
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
@@ -182,39 +182,39 @@ using (var scope = app.Services.CreateScope())
         var phone = new Product
         {
             Name = "iPhone 15 Pro Max 256GB",
-            Description = "Điện thoại di động iPhone 15 Pro Max cao cấp nhất với khung titan siêu nhẹ, chip A17 Pro mạnh mẽ và camera zoom quang học 5x.",
+            Description = "Äiá»‡n thoáº¡i di Ä‘á»™ng iPhone 15 Pro Max cao cáº¥p nháº¥t vá»›i khung titan siÃªu nháº¹, chip A17 Pro máº¡nh máº½ vÃ  camera zoom quang há»c 5x.",
             CategoryId = electronics.Id,
             SellerId = seller.Id,
             CreatedAt = DateTime.UtcNow
         };
-        phone.Skus.Add(new ProductSku { SkuCode = "IP15PM-TITAN", Price = 29990000, StockQuantity = 20, Size = "256GB", Color = "Titan Tự Nhiên" });
+        phone.Skus.Add(new ProductSku { SkuCode = "IP15PM-TITAN", Price = 29990000, StockQuantity = 20, Size = "256GB", Color = "Titan Tá»± NhiÃªn" });
         phone.Skus.Add(new ProductSku { SkuCode = "IP15PM-BLUE", Price = 29490000, StockQuantity = 15, Size = "256GB", Color = "Titan Xanh" });
         phone.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=600&auto=format&fit=crop", IsMain = true });
 
         var laptop = new Product
         {
             Name = "MacBook Air M3 13 inch",
-            Description = "Máy tính xách tay MacBook Air M3 mỏng nhẹ đẳng cấp, hiệu năng vượt trội từ Apple Silicon M3 thế hệ mới.",
+            Description = "MÃ¡y tÃ­nh xÃ¡ch tay MacBook Air M3 má»ng nháº¹ Ä‘áº³ng cáº¥p, hiá»‡u nÄƒng vÆ°á»£t trá»™i tá»« Apple Silicon M3 tháº¿ há»‡ má»›i.",
             CategoryId = electronics.Id,
             SellerId = seller.Id,
             CreatedAt = DateTime.UtcNow
         };
-        laptop.Skus.Add(new ProductSku { SkuCode = "MBA-M3-8G-256G", Price = 27990000, StockQuantity = 10, Size = "8GB - 256GB", Color = "Xám Không Gian" });
-        laptop.Skus.Add(new ProductSku { SkuCode = "MBA-M3-16G-512G", Price = 32990000, StockQuantity = 8, Size = "16GB - 512GB", Color = "Bạc" });
+        laptop.Skus.Add(new ProductSku { SkuCode = "MBA-M3-8G-256G", Price = 27990000, StockQuantity = 10, Size = "8GB - 256GB", Color = "XÃ¡m KhÃ´ng Gian" });
+        laptop.Skus.Add(new ProductSku { SkuCode = "MBA-M3-16G-512G", Price = 32990000, StockQuantity = 8, Size = "16GB - 512GB", Color = "Báº¡c" });
         laptop.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=600&auto=format&fit=crop", IsMain = true });
 
         // Add Fashion Products
         var jacket = new Product
         {
-            Name = "Áo Khoác Bomber Kaki Unisex",
-            Description = "Áo khoác bomber chất liệu kaki 2 lớp cao cấp, phom dáng rộng unisex cá tính phù hợp cả nam và nữ.",
+            Name = "Ão KhoÃ¡c Bomber Kaki Unisex",
+            Description = "Ão khoÃ¡c bomber cháº¥t liá»‡u kaki 2 lá»›p cao cáº¥p, phom dÃ¡ng rá»™ng unisex cÃ¡ tÃ­nh phÃ¹ há»£p cáº£ nam vÃ  ná»¯.",
             CategoryId = fashion.Id,
             SellerId = seller.Id,
             CreatedAt = DateTime.UtcNow
         };
-        jacket.Skus.Add(new ProductSku { SkuCode = "BM-BLK-L", Price = 350000, StockQuantity = 50, Size = "L", Color = "Đen" });
-        jacket.Skus.Add(new ProductSku { SkuCode = "BM-BLK-XL", Price = 350000, StockQuantity = 45, Size = "XL", Color = "Đen" });
-        jacket.Skus.Add(new ProductSku { SkuCode = "BM-GRN-L", Price = 350000, StockQuantity = 30, Size = "L", Color = "Xanh Rêu" });
+        jacket.Skus.Add(new ProductSku { SkuCode = "BM-BLK-L", Price = 350000, StockQuantity = 50, Size = "L", Color = "Äen" });
+        jacket.Skus.Add(new ProductSku { SkuCode = "BM-BLK-XL", Price = 350000, StockQuantity = 45, Size = "XL", Color = "Äen" });
+        jacket.Skus.Add(new ProductSku { SkuCode = "BM-GRN-L", Price = 350000, StockQuantity = 30, Size = "L", Color = "Xanh RÃªu" });
         jacket.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1551028719-00167b16eac5?q=80&w=600&auto=format&fit=crop", IsMain = true });
 
         context.Products.AddRange(phone, laptop, jacket);
@@ -223,3 +223,4 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
