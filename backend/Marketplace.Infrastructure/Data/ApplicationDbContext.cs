@@ -23,6 +23,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<SubOrder> SubOrders => Set<SubOrder>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PaymentLog> PaymentLogs => Set<PaymentLog>();
+    public DbSet<SellerWallet> SellerWallets => Set<SellerWallet>();
+    public DbSet<WalletTransaction> WalletTransactions => Set<WalletTransaction>();
+    public DbSet<WithdrawalRequest> WithdrawalRequests => Set<WithdrawalRequest>();
+    public DbSet<Voucher> Vouchers => Set<Voucher>();
+    public DbSet<ProductReview> ProductReviews => Set<ProductReview>();
+    public DbSet<Wishlist> Wishlists => Set<Wishlist>();
+    public DbSet<ReturnRequest> ReturnRequests => Set<ReturnRequest>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Banner> Banners => Set<Banner>();
+    public DbSet<Post> Posts => Set<Post>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -169,6 +181,142 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                   .WithMany(so => so.StatusHistories)
                   .HasForeignKey(e => e.SubOrderId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Payment
+        builder.Entity<Payment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.HasOne(e => e.Order)
+                  .WithMany()
+                  .HasForeignKey(e => e.OrderId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PaymentLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Payment)
+                  .WithMany(p => p.Logs)
+                  .HasForeignKey(e => e.PaymentId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Seller Wallet & Withdrawals
+        builder.Entity<SellerWallet>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Balance).HasPrecision(18, 2);
+            entity.Property(e => e.LockedBalance).HasPrecision(18, 2);
+            entity.HasOne(e => e.Seller)
+                  .WithOne(s => s.Wallet)
+                  .HasForeignKey<SellerWallet>(e => e.SellerId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WalletTransaction>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.HasOne(e => e.Wallet)
+                  .WithMany(w => w.Transactions)
+                  .HasForeignKey(e => e.WalletId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WithdrawalRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
+            entity.HasOne(e => e.Seller)
+                  .WithMany()
+                  .HasForeignKey(e => e.SellerId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Voucher
+        builder.Entity<Voucher>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Code).IsUnique();
+            entity.Property(e => e.DiscountPercent).HasPrecision(18, 2);
+            entity.Property(e => e.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(e => e.MinOrderAmount).HasPrecision(18, 2);
+            entity.Property(e => e.MaxDiscountAmount).HasPrecision(18, 2);
+        });
+
+        // ProductReview
+        builder.Entity<ProductReview>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.Product)
+                  .WithMany()
+                  .HasForeignKey(e => e.ProductId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.SubOrder)
+                  .WithMany()
+                  .HasForeignKey(e => e.SubOrderId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Wishlist
+        builder.Entity<Wishlist>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Product)
+                  .WithMany()
+                  .HasForeignKey(e => e.ProductId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ReturnRequest
+        builder.Entity<ReturnRequest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RefundAmount).HasPrecision(18, 2);
+            entity.HasOne(e => e.SubOrder)
+                  .WithMany()
+                  .HasForeignKey(e => e.SubOrderId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Notification
+        builder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Content
+        builder.Entity<Banner>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+        });
+
+        builder.Entity<Post>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Slug).IsUnique();
         });
     }
 }

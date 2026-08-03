@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 
 namespace Marketplace.API.Controllers;
 
+/// <summary>
+/// API Quản lý Danh mục Sản phẩm (Cấu trúc Cây nhiều cấp)
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class CategoriesController : ControllerBase
@@ -20,6 +23,9 @@ public class CategoriesController : ControllerBase
         _context = context;
     }
 
+    /// <summary>
+    /// Lấy danh sách toàn bộ danh mục sản phẩm (Mảng phẳng)
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -36,6 +42,9 @@ public class CategoriesController : ControllerBase
         return Ok(categories);
     }
 
+    /// <summary>
+    /// Lấy danh sách danh mục theo dạng cấu trúc Cây Cha - Con (Category Tree)
+    /// </summary>
     [HttpGet("tree")]
     public async Task<IActionResult> GetTree()
     {
@@ -64,6 +73,9 @@ public class CategoriesController : ControllerBase
         return Ok(rootCategories);
     }
 
+    /// <summary>
+    /// Lấy thông tin chi tiết 1 danh mục theo ID
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -83,6 +95,9 @@ public class CategoriesController : ControllerBase
         return Ok(category);
     }
 
+    /// <summary>
+    /// Tạo danh mục sản phẩm mới (Dành cho Admin)
+    /// </summary>
     [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CategoryCreateDto dto)
@@ -107,6 +122,9 @@ public class CategoriesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
     }
 
+    /// <summary>
+    /// Cập nhật thông tin danh mục sản phẩm (Dành cho Admin)
+    /// </summary>
     [Authorize]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(int id, [FromBody] CategoryUpdateDto dto)
@@ -132,6 +150,9 @@ public class CategoriesController : ControllerBase
         return Ok(category);
     }
 
+    /// <summary>
+    /// Xóa danh mục sản phẩm theo ID (Dành cho Admin)
+    /// </summary>
     [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)

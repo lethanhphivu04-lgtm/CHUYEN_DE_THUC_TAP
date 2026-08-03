@@ -9,6 +9,9 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace Marketplace.API.Controllers;
 
+/// <summary>
+/// API Quản lý Xác thực và Tài khoản (Đăng ký, Đăng nhập, Thông tin cá nhân)
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
@@ -27,6 +30,9 @@ public class AuthController : ControllerBase
         _configuration = configuration;
     }
 
+    /// <summary>
+    /// Đăng ký tài khoản người dùng mới (Member hoặc Người bán/Seller)
+    /// </summary>
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterDto dto)
     {
@@ -57,6 +63,9 @@ public class AuthController : ControllerBase
         return Ok(new { message = "Đăng ký tài khoản thành công!", userId = user.Id });
     }
 
+    /// <summary>
+    /// Đăng nhập hệ thống và lấy chuỗi Token JWT
+    /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
@@ -85,6 +94,9 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Lấy thông tin tài khoản người dùng đang đăng nhập
+    /// </summary>
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> GetCurrentUser()

@@ -34,6 +34,8 @@ obj/
 # User-specific files
 *.userprefs
 *.docstates
+appsettings.Development.json
+appsettings.Local.json
 
 # Publish output
 backend/*/publish/

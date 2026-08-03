@@ -11,6 +11,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Marketplace.API.Controllers;
 
+/// <summary>
+/// API Quản lý Sản phẩm (Danh sách, Chi tiết, Thêm mới, Xóa sản phẩm)
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
@@ -22,6 +25,9 @@ public class ProductsController : ControllerBase
         _context = context;
     }
 
+    /// <summary>
+    /// Lấy danh sách sản phẩm (có hỗ trợ Lọc theo Từ khóa, Danh mục, Khoảng giá, Sắp xếp và Phân trang)
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetProducts(
         [FromQuery] string? search,
@@ -114,6 +120,9 @@ public class ProductsController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Lấy chi tiết thông tin 1 sản phẩm theo ID (gồm danh sách SKU và hình ảnh)
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetProductById(int id)
     {
@@ -156,6 +165,9 @@ public class ProductsController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Đăng bán sản phẩm mới (Dành cho Người bán / Seller)
+    /// </summary>
     [Authorize]
     [HttpPost]
     public async Task<IActionResult> CreateProduct([FromBody] ProductCreateDto dto)
@@ -258,6 +270,9 @@ public class ProductsController : ControllerBase
         return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, product);
     }
 
+    /// <summary>
+    /// Xóa sản phẩm theo ID (Yêu cầu quyền Seller sở hữu hoặc Admin)
+    /// </summary>
     [Authorize]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteProduct(int id)

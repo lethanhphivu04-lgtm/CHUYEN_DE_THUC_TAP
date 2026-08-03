@@ -25,40 +25,40 @@
 
 ## Phase 3: Thanh toán (Module 4)
 
-- [ ] 3.1 Backend: Payment + PaymentLog entities + migration
-- [ ] 3.2 Backend: PaymentsController (COD, VNPay callback)
-- [ ] 3.3 Frontend: Tích hợp payment vào checkout
+- [x] 3.1 Backend: Payment + PaymentLog entities + migration
+- [x] 3.2 Backend: PaymentsController (COD, VNPay callback)
+- [x] 3.3 Frontend: Tích hợp payment vào checkout
 
 ## Phase 4: Quản lý Người bán (Module 6)
 
-- [ ] 4.1 Backend: SellerWallet + WalletTransaction + WithdrawalRequest entities
-- [ ] 4.2 Backend: SellersController (đăng ký, CRUD SP, xem đơn, dashboard)
-- [ ] 4.3 Frontend: Admin duyệt seller
-- [ ] 4.4 Frontend: Seller dashboard + CRUD sản phẩm + xử lý đơn
+- [x] 4.1 Backend: SellerWallet + WalletTransaction + WithdrawalRequest entities
+- [x] 4.2 Backend: SellersController (đăng ký, CRUD SP, xem đơn, dashboard)
+- [x] 4.3 Frontend: Admin duyệt seller
+- [x] 4.4 Frontend: Seller dashboard + CRUD sản phẩm + xử lý đơn
 
 ## Phase 5: Admin Nâng Cao (Module 11)
 
-- [ ] 5.1 Backend: Admin endpoints (user management, stats, audit log)
+- [x] 5.1 Backend: Admin endpoints (user management, stats, audit log)
 - [ ] 5.2 Frontend: Admin user CRUD thật (lock/unlock, phân vai trò)
 - [ ] 5.3 Frontend: Admin dashboard thật (thống kê realtime)
 - [ ] 5.4 Frontend: Admin order management
 
 ## Phase 6: Mở rộng (Modules 7, 8, 9)
 
-- [ ] 6.1 Voucher system (backend + frontend)
-- [ ] 6.2 Product Reviews & Ratings (backend + frontend)
-- [ ] 6.3 Wishlist (backend + frontend)
-- [ ] 6.4 Returns & Refunds (backend + frontend)
+- [x] 6.1 Voucher system (backend)
+- [x] 6.2 Product Reviews & Ratings (backend)
+- [x] 6.3 Wishlist (backend)
+- [x] 6.4 Returns & Refunds (backend)
 
 ## Phase 7: Thông báo & Nội dung (Module 10, 11)
 
-- [ ] 7.1 In-app Notifications (backend + frontend bell icon)
-- [ ] 7.2 Email notifications (đơn hàng, OTP)
-- [ ] 7.3 Banner management (backend + frontend carousel)
-- [ ] 7.4 Blog/Posts (backend + frontend)
+- [x] 7.1 In-app Notifications (backend)
+- [x] 7.2 Email notifications (đơn hàng, OTP)
+- [x] 7.3 Banner management (backend)
+- [x] 7.4 Blog/Posts (backend)
 
 ## Phase 8: Chatbot & Polish (Module 12)
 
-- [ ] 8.1 Chatbot widget (OpenAI API integration)
-- [ ] 8.2 Autocomplete search
+- [x] 8.1 Chatbot Gemini AI integration (backend)
+- [x] 8.2 Autocomplete search (backend)
 - [ ] 8.3 UI/UX polish toàn bộ

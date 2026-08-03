@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5087/api';
 
@@ -20,6 +20,18 @@ if (typeof window !== 'undefined') {
       return config;
     },
     (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.dispatchEvent(new Event('authChange'));
+      }
       return Promise.reject(error);
     }
   );
@@ -91,13 +103,23 @@ export const addressService = {
 
 export const categoryService = {
   async getAll() {
-    const response = await api.get('/categories');
-    return response.data;
+    try {
+      const response = await api.get('/categories');
+      return response.data;
+    } catch (error) {
+      console.warn('Backend API disconnected:', error.message);
+      return [];
+    }
   },
 
   async getTree() {
-    const response = await api.get('/categories/tree');
-    return response.data;
+    try {
+      const response = await api.get('/categories/tree');
+      return response.data;
+    } catch (error) {
+      console.warn('Backend API disconnected:', error.message);
+      return [];
+    }
   },
 
   async getById(id) {
@@ -123,8 +145,13 @@ export const categoryService = {
 
 export const productService = {
   async getProducts(params = {}) {
-    const response = await api.get('/products', { params });
-    return response.data;
+    try {
+      const response = await api.get('/products', { params });
+      return response.data;
+    } catch (error) {
+      console.warn('Backend API disconnected:', error.message);
+      return { products: [], page: 1, pageSize: 12, totalItems: 0, totalPages: 1 };
+    }
   },
 
   async getProductById(id) {
@@ -146,8 +173,14 @@ export const productService = {
 
 export const cartService = {
   async getMyCart() {
-    const response = await api.get('/carts');
-    return response.data;
+    try {
+      const response = await api.get('/carts');
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 401) throw error;
+      console.warn('Backend API disconnected:', error.message);
+      return [];
+    }
   },
 
   async addItem(productSkuId, quantity = 1) {
@@ -173,8 +206,14 @@ export const orderService = {
   },
 
   async getMyOrders() {
-    const response = await api.get('/orders');
-    return response.data;
+    try {
+      const response = await api.get('/orders');
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 401) throw error;
+      console.warn('Backend API disconnected:', error.message);
+      return [];
+    }
   },
 
   async getOrder(id) {
@@ -187,5 +226,86 @@ export const orderService = {
     return response.data;
   },
 };
+
+export const paymentService = {
+  async createVnPayUrl(orderId) {
+    const response = await api.post('/payments/create-vnpay-url', { orderId });
+    return response.data;
+  },
+
+  async processVnPayReturn(queryString) {
+    const response = await api.get('/payments/vnpay-return' + queryString);
+    return response.data;
+  },
+
+  async getPaymentByOrder(orderId) {
+    const response = await api.get('/payments/order/' + orderId);
+    return response.data;
+  },
+};
+
+export const sellerService = {
+  async register(shopName, description, logoUrl) {
+    const response = await api.post('/sellers/register', { shopName, description, logoUrl });
+    return response.data;
+  },
+
+  async getMyShop() {
+    const response = await api.get('/sellers/my-shop');
+    return response.data;
+  },
+
+  async updateMyShop(shopData) {
+    const response = await api.put('/sellers/my-shop', shopData);
+    return response.data;
+  },
+
+  async getDashboardStats() {
+    const response = await api.get('/sellers/dashboard-stats');
+    return response.data;
+  },
+
+  async getSellerOrders() {
+    const response = await api.get('/sellers/orders');
+    return response.data;
+  },
+
+  async getWallet() {
+    const response = await api.get('/sellers/wallet');
+    return response.data;
+  },
+
+  async createWithdrawal(withdrawalData) {
+    const response = await api.post('/sellers/withdraw', withdrawalData);
+    return response.data;
+  },
+
+  // Admin
+  async getAllSellers(status) {
+    const response = await api.get('/sellers', { params: { status } });
+    return response.data;
+  },
+
+  async approveSeller(id) {
+    const response = await api.post(`/sellers/${id}/approve`);
+    return response.data;
+  },
+
+  async rejectSeller(id, reason) {
+    const response = await api.post(`/sellers/${id}/reject`, { reason });
+    return response.data;
+  },
+
+  async getAllWithdrawals() {
+    const response = await api.get('/sellers/withdrawals');
+    return response.data;
+  },
+
+  async processWithdrawal(id, isApproved, note) {
+    const response = await api.post(`/sellers/withdrawals/${id}/process`, { isApproved, note });
+    return response.data;
+  },
+};
+
 export default api;
 

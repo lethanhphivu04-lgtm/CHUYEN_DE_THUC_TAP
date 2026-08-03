@@ -19,8 +19,9 @@ export default function AdminProductPage() {
       if (search) params.search = search;
       if (selectedCategory) params.categoryId = selectedCategory;
       const data = await productService.getProducts(params);
-      setProducts(data.items || data);
-      setTotalPages(data.totalPages || 1);
+      const productList = data?.products || data?.items || (Array.isArray(data) ? data : []);
+      setProducts(Array.isArray(productList) ? productList : []);
+      setTotalPages(data?.totalPages || 1);
     } catch (err) {
       console.error(err);
     } finally {

@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Marketplace.API.Controllers;
 
+/// <summary>
+/// API Quản lý Đặt hàng và Đơn hàng (Checkout tách đơn tự động theo Seller, Lịch sử mua hàng, Hủy đơn)
+/// </summary>
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
@@ -126,7 +129,9 @@ public class OrdersController : ControllerBase
         return Ok(new { message = "Đặt hàng thành công!", orderId = order.Id });
     }
 
-    /// <summary>Lịch sử đơn hàng của user</summary>
+    /// <summary>
+    /// Lấy danh sách lịch sử đơn hàng của người dùng đang đăng nhập
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetMyOrders()
     {

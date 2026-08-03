@@ -43,8 +43,9 @@ export default function ProductPage() {
         pageSize: 9,
       };
       const data = await productService.getProducts(params);
-      setProducts(data.products || []);
-      setTotalPages(data.totalPages || 1);
+      const productList = data?.products || data?.items || (Array.isArray(data) ? data : []);
+      setProducts(Array.isArray(productList) ? productList : []);
+      setTotalPages(data?.totalPages || 1);
     } catch (err) {
       console.error('Error fetching products:', err);
     } finally {

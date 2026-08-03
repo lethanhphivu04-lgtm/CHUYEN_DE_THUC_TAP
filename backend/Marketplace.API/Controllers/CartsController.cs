@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Marketplace.API.Controllers;
 
+/// <summary>
+/// API Quản lý Giỏ hàng (Xem giỏ hàng, Thêm sản phẩm, Thay đổi số lượng, Xóa sản phẩm)
+/// </summary>
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
@@ -19,6 +22,9 @@ public class CartsController : ControllerBase
         _context = context;
     }
 
+    /// <summary>
+    /// Lấy thông tin giỏ hàng của người dùng đang đăng nhập
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetMyCart()
     {
@@ -64,6 +70,9 @@ public class CartsController : ControllerBase
         return Ok(items);
     }
 
+    /// <summary>
+    /// Thêm sản phẩm (theo SKU) vào giỏ hàng
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> AddItem([FromBody] CartAddDto dto)
     {
@@ -107,6 +116,9 @@ public class CartsController : ControllerBase
         return Ok(new { message = "Đã thêm vào giỏ hàng." });
     }
 
+    /// <summary>
+    /// Cập nhật số lượng của 1 mục trong giỏ hàng
+    /// </summary>
     [HttpPut("{itemId}")]
     public async Task<IActionResult> UpdateQuantity(int itemId, [FromBody] CartUpdateDto dto)
     {
@@ -135,6 +147,9 @@ public class CartsController : ControllerBase
         return Ok(new { message = "Cập nhật giỏ hàng thành công." });
     }
 
+    /// <summary>
+    /// Xóa 1 mục sản phẩm khỏi giỏ hàng
+    /// </summary>
     [HttpDelete("{itemId}")]
     public async Task<IActionResult> RemoveItem(int itemId)
     {

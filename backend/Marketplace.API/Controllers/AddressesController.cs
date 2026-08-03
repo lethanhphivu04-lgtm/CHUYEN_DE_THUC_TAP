@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Marketplace.API.Controllers;
 
+/// <summary>
+/// API Quản lý Sổ địa chỉ nhận hàng của người dùng
+/// </summary>
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
@@ -19,6 +22,9 @@ public class AddressesController : ControllerBase
         _context = context;
     }
 
+    /// <summary>
+    /// Lấy danh sách sổ địa chỉ nhận hàng của người dùng đang đăng nhập
+    /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetMyAddresses()
     {
@@ -34,6 +40,9 @@ public class AddressesController : ControllerBase
         return Ok(addresses);
     }
 
+    /// <summary>
+    /// Lấy chi tiết 1 địa chỉ theo ID
+    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetAddressById(int id)
     {
@@ -48,6 +57,9 @@ public class AddressesController : ControllerBase
         return Ok(address);
     }
 
+    /// <summary>
+    /// Thêm địa chỉ nhận hàng mới
+    /// </summary>
     [HttpPost]
     public async Task<IActionResult> CreateAddress([FromBody] AddressCreateDto dto)
     {
@@ -81,6 +93,9 @@ public class AddressesController : ControllerBase
         return CreatedAtAction(nameof(GetAddressById), new { id = address.Id }, address);
     }
 
+    /// <summary>
+    /// Cập nhật thông tin địa chỉ nhận hàng theo ID
+    /// </summary>
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateAddress(int id, [FromBody] AddressUpdateDto dto)
     {
@@ -126,6 +141,9 @@ public class AddressesController : ControllerBase
         return Ok(address);
     }
 
+    /// <summary>
+    /// Xóa 1 địa chỉ nhận hàng theo ID
+    /// </summary>
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteAddress(int id)
     {

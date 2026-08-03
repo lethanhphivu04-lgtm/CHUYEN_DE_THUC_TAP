@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { addressService, cartService, orderService } from '../../_lib/api';
+import { addressService, cartService, orderService, paymentService } from '../../_lib/api';
 
 const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
@@ -51,7 +51,14 @@ export default function CheckoutPage() {
     setError('');
 
     try {
-      await orderService.checkout(selectedAddressId, paymentMethod);
+      const res = await orderService.checkout(selectedAddressId, paymentMethod);
+      if (paymentMethod === 'VNPay') {
+        const payRes = await paymentService.createVnPayUrl(res.orderId);
+        if (payRes.paymentUrl) {
+          window.location.href = payRes.paymentUrl;
+          return;
+        }
+      }
       alert('Đặt hàng thành công!');
       router.push('/profile/orders');
     } catch (err) {

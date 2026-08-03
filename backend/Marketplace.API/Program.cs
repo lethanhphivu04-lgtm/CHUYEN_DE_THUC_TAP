@@ -1,4 +1,6 @@
-﻿using System.Text;
+using System.Text;
+using Microsoft.OpenApi.Models;
+using Marketplace.API.Services;
 using Marketplace.Core.Entities;
 using Marketplace.Core.Interfaces;
 using Marketplace.Infrastructure.Data;
@@ -23,7 +25,8 @@ builder.Host.UseSerilog();
 // Add DbContext
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString).ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
+    options.UseSqlServer(connectionString, o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery))
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -75,11 +78,61 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddHttpClient();
 builder.Services.AddTransient<IEmailService, EmailService>();
+builder.Services.AddScoped<IVnPayService, VnPayService>();
+builder.Services.AddScoped<IGeminiService, GeminiService>();
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "HITU MARKET — Multi-Vendor Marketplace API",
+        Version = "v1",
+        Description = "Hệ thống Web API thương mại điện tử đa người bán (.NET 9). Hỗ trợ Quản lý Sản phẩm, Danh mục, Giỏ hàng, Tách đơn tự động theo Seller và Xác thực JWT."
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Nhập Token JWT theo dạng: Bearer {token_cua_ban}"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = System.IO.Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (System.IO.File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
 
 var app = builder.Build();
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "HITU MARKET API v1");
+    c.DocumentTitle = "HITU MARKET — Swagger API Documentation";
+});
 
 app.UseSerilogRequestLogging();
 app.UseCors("AllowAll");
@@ -89,138 +142,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Seed Default Roles
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await context.Database.MigrateAsync();
-
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    string[] roles = ["Admin", "Seller", "Member", "Guest"];
-    foreach (var role in roles)
-    {
-        if (!await roleManager.RoleExistsAsync(role))
-        {
-            await roleManager.CreateAsync(new IdentityRole(role));
-        }
-    }
-
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-
-    // Seed Admin
-    var adminUser = await userManager.FindByEmailAsync("admin@gmail.com");
-    if (adminUser == null)
-    {
-        adminUser = new ApplicationUser
-        {
-            UserName = "admin@gmail.com",
-            Email = "admin@gmail.com",
-            FullName = "Há»‡ Thá»‘ng Admin",
-            EmailConfirmed = true
-        };
-        await userManager.CreateAsync(adminUser, "Admin123!");
-        await userManager.AddToRoleAsync(adminUser, "Admin");
-    }
-
-    // Seed Customer/Member
-    var customerUser = await userManager.FindByEmailAsync("customer@gmail.com");
-    if (customerUser == null)
-    {
-        customerUser = new ApplicationUser
-        {
-            UserName = "customer@gmail.com",
-            Email = "customer@gmail.com",
-            FullName = "Nguyá»…n VÄƒn KhÃ¡ch",
-            EmailConfirmed = true
-        };
-        await userManager.CreateAsync(customerUser, "Member123!");
-        await userManager.AddToRoleAsync(customerUser, "Member");
-    }
-
-    // Seed Categories and Products
-    if (!await context.Categories.AnyAsync())
-    {
-        var electronics = new Category { Name = "Äiá»‡n thoáº¡i & MÃ¡y tÃ­nh", Description = "Thiáº¿t bá»‹ cÃ´ng nghá»‡ chÃ­nh hÃ£ng" };
-        var fashion = new Category { Name = "Thá»i trang & Phá»¥ kiá»‡n", Description = "Thá»i trang nam ná»¯ hiá»‡n Ä‘áº¡i" };
-        var home = new Category { Name = "NhÃ  cá»­a & Äá»i sá»‘ng", Description = "Äá»“ gia dá»¥ng tiá»‡n Ã­ch" };
-
-        context.Categories.AddRange(electronics, fashion, home);
-        await context.SaveChangesAsync();
-
-        // Seed a sample Seller
-        var sellerUser = await userManager.FindByEmailAsync("seller@gmail.com");
-        if (sellerUser == null)
-        {
-            sellerUser = new ApplicationUser
-            {
-                UserName = "seller@gmail.com",
-                Email = "seller@gmail.com",
-                FullName = "Nguyá»…n VÄƒn NgÆ°á»i BÃ¡n",
-                IsSeller = true,
-                EmailConfirmed = true
-            };
-            await userManager.CreateAsync(sellerUser, "Seller123!");
-            await userManager.AddToRoleAsync(sellerUser, "Seller");
-        }
-
-        var seller = await context.Sellers.FirstOrDefaultAsync(s => s.UserId == sellerUser.Id);
-        if (seller == null)
-        {
-            seller = new Seller
-            {
-                UserId = sellerUser.Id,
-                ShopName = "HITU Official Store",
-                Description = "Cá»­a hÃ ng chÃ­nh hÃ£ng phÃ¢n phá»‘i thiáº¿t bá»‹ vÃ  thá»i trang cao cáº¥p.",
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            };
-            context.Sellers.Add(seller);
-            await context.SaveChangesAsync();
-        }
-
-        // Add Electronics Products
-        var phone = new Product
-        {
-            Name = "iPhone 15 Pro Max 256GB",
-            Description = "Äiá»‡n thoáº¡i di Ä‘á»™ng iPhone 15 Pro Max cao cáº¥p nháº¥t vá»›i khung titan siÃªu nháº¹, chip A17 Pro máº¡nh máº½ vÃ  camera zoom quang há»c 5x.",
-            CategoryId = electronics.Id,
-            SellerId = seller.Id,
-            CreatedAt = DateTime.UtcNow
-        };
-        phone.Skus.Add(new ProductSku { SkuCode = "IP15PM-TITAN", Price = 29990000, StockQuantity = 20, Size = "256GB", Color = "Titan Tá»± NhiÃªn" });
-        phone.Skus.Add(new ProductSku { SkuCode = "IP15PM-BLUE", Price = 29490000, StockQuantity = 15, Size = "256GB", Color = "Titan Xanh" });
-        phone.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=600&auto=format&fit=crop", IsMain = true });
-
-        var laptop = new Product
-        {
-            Name = "MacBook Air M3 13 inch",
-            Description = "MÃ¡y tÃ­nh xÃ¡ch tay MacBook Air M3 má»ng nháº¹ Ä‘áº³ng cáº¥p, hiá»‡u nÄƒng vÆ°á»£t trá»™i tá»« Apple Silicon M3 tháº¿ há»‡ má»›i.",
-            CategoryId = electronics.Id,
-            SellerId = seller.Id,
-            CreatedAt = DateTime.UtcNow
-        };
-        laptop.Skus.Add(new ProductSku { SkuCode = "MBA-M3-8G-256G", Price = 27990000, StockQuantity = 10, Size = "8GB - 256GB", Color = "XÃ¡m KhÃ´ng Gian" });
-        laptop.Skus.Add(new ProductSku { SkuCode = "MBA-M3-16G-512G", Price = 32990000, StockQuantity = 8, Size = "16GB - 512GB", Color = "Báº¡c" });
-        laptop.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=600&auto=format&fit=crop", IsMain = true });
-
-        // Add Fashion Products
-        var jacket = new Product
-        {
-            Name = "Ão KhoÃ¡c Bomber Kaki Unisex",
-            Description = "Ão khoÃ¡c bomber cháº¥t liá»‡u kaki 2 lá»›p cao cáº¥p, phom dÃ¡ng rá»™ng unisex cÃ¡ tÃ­nh phÃ¹ há»£p cáº£ nam vÃ  ná»¯.",
-            CategoryId = fashion.Id,
-            SellerId = seller.Id,
-            CreatedAt = DateTime.UtcNow
-        };
-        jacket.Skus.Add(new ProductSku { SkuCode = "BM-BLK-L", Price = 350000, StockQuantity = 50, Size = "L", Color = "Äen" });
-        jacket.Skus.Add(new ProductSku { SkuCode = "BM-BLK-XL", Price = 350000, StockQuantity = 45, Size = "XL", Color = "Äen" });
-        jacket.Skus.Add(new ProductSku { SkuCode = "BM-GRN-L", Price = 350000, StockQuantity = 30, Size = "L", Color = "Xanh RÃªu" });
-        jacket.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1551028719-00167b16eac5?q=80&w=600&auto=format&fit=crop", IsMain = true });
-
-        context.Products.AddRange(phone, laptop, jacket);
-        await context.SaveChangesAsync();
-    }
-}
+// Seed Database Roles, Admin, Sellers, Categories, and Products
+await DbSeeder.SeedAsync(app.Services);
 
 app.Run();
-

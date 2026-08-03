@@ -38,8 +38,9 @@ export default function HomePage() {
       productService.getProducts({ pageSize: 8 }),
       categoryService.getAll(),
     ]).then(([prodData, catData]) => {
-      setProducts(prodData.items || prodData);
-      setCategories(catData);
+      const productList = prodData?.products || prodData?.items || (Array.isArray(prodData) ? prodData : []);
+      setProducts(Array.isArray(productList) ? productList : []);
+      setCategories(Array.isArray(catData) ? catData : []);
     }).catch(console.error).finally(() => setLoading(false));
   }, []);
 
