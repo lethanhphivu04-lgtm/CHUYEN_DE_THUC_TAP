@@ -67,20 +67,20 @@ HITU_MARKET/
 - SQL Server (LocalDB hoặc Express)
 
 #### Các bước thực hiện:
-1. Mở terminal và di chuyển vào thư mục backend:
-   ```bash
+1. Mở terminal và di chuyển vào thư mục `backend`:
+   ```powershell
    cd backend
    ```
-2. Cập nhật chuỗi kết nối cơ sở dữ liệu (Connection String) trong tệp `Marketplace.API/appsettings.json` cho phù hợp với SQL Server của bạn.
-3. Thực hiện chạy các Migration để tạo cấu trúc bảng CSDL:
-   ```bash
+2. Cập nhật chuỗi kết nối CSDL và các thông số API Key trong `Marketplace.API/appsettings.json` (VNPay, Gemini AI, EmailSettings).
+3. Chạy các Migration để tạo/cập nhật bảng CSDL:
+   ```powershell
    dotnet ef database update --project Marketplace.Infrastructure --startup-project Marketplace.API
    ```
 4. Khởi động ứng dụng Backend API:
-   ```bash
+   ```powershell
    dotnet run --project Marketplace.API
    ```
-   *Lưu ý: API Swagger sẽ được mở mặc định tại địa chỉ: `https://localhost:7147/swagger` hoặc `http://localhost:5087/swagger` (tùy thuộc vào cổng cấu hình).*
+   *Lưu ý: API Swagger mở tại `http://localhost:5087/swagger` hoặc `https://localhost:7147/swagger`.*
 
 ---
 
@@ -88,20 +88,24 @@ HITU_MARKET/
 
 #### Yêu cầu:
 - Node.js (phiên bản 18 trở lên)
-- npm hoặc yarn
+- npm
 
 #### Các bước thực hiện:
-1. Mở terminal mới và di chuyển vào thư mục frontend:
-   ```bash
+1. Mở terminal mới và di chuyển vào thư mục `frontend`:
+   ```powershell
    cd frontend
    ```
 2. Cài đặt các gói thư viện cần thiết:
-   ```bash
+   ```powershell
    npm install
+   # Hoặc trên Windows PowerShell nếu gặp lỗi Execution Policy:
+   npm.cmd install
    ```
 3. Chạy dự án ở môi trường phát triển (Development mode):
-   ```bash
+   ```powershell
    npm run dev
+   # Hoặc trên Windows PowerShell:
+   npm.cmd run dev
    ```
 4. Truy cập giao diện web tại địa chỉ: `http://localhost:3000`.
 
