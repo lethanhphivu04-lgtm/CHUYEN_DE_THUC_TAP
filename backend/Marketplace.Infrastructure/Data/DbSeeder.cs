@@ -63,7 +63,80 @@ public static class DbSeeder
                 EmailConfirmed = true
             };
             await userManager.CreateAsync(customerUser, "Member123!");
-            await userManager.AddToRoleAsync(customerUser, "Member");
+        }
+
+        // Seed addresses for customerUser
+        if (customerUser != null)
+        {
+            var hasAddresses = await context.Addresses.AnyAsync(a => a.UserId == customerUser.Id);
+            if (!hasAddresses)
+            {
+                var addresses = new List<Address>
+                {
+                    new Address
+                    {
+                        UserId = customerUser.Id,
+                        ReceiverName = "Nguyễn Văn Khách",
+                        Phone = "0901234567",
+                        StreetAddress = "Feliz Homes - Tòa Zen, Ngõ 279 Đường Hoàng Mai",
+                        Ward = "Phường Hoàng Văn Thụ",
+                        District = "Quận Hoàng Mai",
+                        City = "Thành phố Hà Nội",
+                        IsDefault = true,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new Address
+                    {
+                        UserId = customerUser.Id,
+                        ReceiverName = "Nguyễn Văn Khách (Văn phòng)",
+                        Phone = "0987654321",
+                        StreetAddress = "Tòa nhà Keangnam Landmark 72, Đường Phạm Hùng",
+                        Ward = "Phường Mễ Trì",
+                        District = "Quận Nam Từ Liêm",
+                        City = "Thành phố Hà Nội",
+                        IsDefault = false,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new Address
+                    {
+                        UserId = customerUser.Id,
+                        ReceiverName = "Nguyễn Văn Khách (Nhà riêng Đà Nẵng)",
+                        Phone = "0911223344",
+                        StreetAddress = "Lô 12-14 Đường Võ Nguyên Giáp",
+                        Ward = "Phường Phước Mỹ",
+                        District = "Quận Sơn Trà",
+                        City = "Thành phố Đà Nẵng",
+                        IsDefault = false,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new Address
+                    {
+                        UserId = customerUser.Id,
+                        ReceiverName = "Nguyễn Văn Khách (Chi nhánh HCM)",
+                        Phone = "0933445566",
+                        StreetAddress = "Số 15 Lê Lợi, Bến Nghé",
+                        Ward = "Phường Bến Nghé",
+                        District = "Quận 1",
+                        City = "Thành phố Hồ Chí Minh",
+                        IsDefault = false,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new Address
+                    {
+                        UserId = customerUser.Id,
+                        ReceiverName = "Nguyễn Văn Khách (Quê quán)",
+                        Phone = "0944556677",
+                        StreetAddress = "Đường Hùng Vương, Xã Cam Hải Tây",
+                        Ward = "Xã Cam Hải Tây",
+                        District = "Huyện Cam Lâm",
+                        City = "Tỉnh Khánh Hòa",
+                        IsDefault = false,
+                        CreatedAt = DateTime.UtcNow
+                    }
+                };
+                context.Addresses.AddRange(addresses);
+                await context.SaveChangesAsync();
+            }
         }
 
         // If categories and many products already exist, skip duplicate seeding
