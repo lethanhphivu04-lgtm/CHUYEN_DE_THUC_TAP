@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { productService, cartService } from '../../../_lib/api';
+import { productService, cartService, authService, productReviewService } from '../../../_lib/api';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -22,6 +22,10 @@ export default function ProductDetailPage() {
   const [activeImage, setActiveImage] = useState('');
   const [cartSuccess, setCartSuccess] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
+
+  // Review states
+  const [reviewsData, setReviewsData] = useState({ totalReviews: 0, averageRating: 5.0, reviews: [] });
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -51,6 +55,25 @@ export default function ProductDetailPage() {
     fetchProduct();
   }, [productId]);
 
+  useEffect(() => {
+    const fetchReviews = async () => {
+      setReviewsLoading(true);
+      try {
+        const data = await productReviewService.getProductReviews(productId);
+        if (data) {
+          setReviewsData(data);
+        }
+      } catch (err) {
+        console.warn('Lỗi khi tải đánh giá sản phẩm:', err);
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+    if (productId) {
+      fetchReviews();
+    }
+  }, [productId]);
+
   // Handler when color or size changes
   useEffect(() => {
     if (!product || !product.skus) return;
@@ -71,6 +94,13 @@ export default function ProductDetailPage() {
   };
 
   const handleAddToCart = async () => {
+    const user = authService.getCurrentUser();
+    if (!user) {
+      alert('Vui lòng đăng nhập tài khoản để thêm sản phẩm vào giỏ hàng.');
+      router.push('/login');
+      return;
+    }
+
     if (!selectedSku) {
       alert('Vui lòng chọn đầy đủ phân loại màu sắc và kích thước.');
       return;
@@ -79,12 +109,19 @@ export default function ProductDetailPage() {
     setAddingToCart(true);
     try {
       await cartService.addItem(selectedSku.id, quantity);
+      window.dispatchEvent(new Event('cartChange'));
       setCartSuccess(true);
       setTimeout(() => {
         setCartSuccess(false);
       }, 4000);
     } catch (err) {
-      const msg = err.response?.data?.message || 'Không thể thêm vào giỏ hàng. Vui lòng đăng nhập.';
+      if (err.response?.status === 401) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        router.push('/login');
+        return;
+      }
+      console.error('Chi tiết lỗi từ máy chủ:', err.response?.data || err.message);
+      const msg = err.response?.data?.message || 'Có lỗi xảy ra khi thêm vào giỏ hàng. Vui lòng thử lại.';
       alert(msg);
     } finally {
       setAddingToCart(false);
@@ -308,6 +345,112 @@ export default function ProductDetailPage() {
           {product.description}
         </p>
       </div>
+
+      {/* Reviews Tab & Distribution */}
+      {(() => {
+        const reviewsCount = reviewsData.totalReviews || 0;
+        const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        if (reviewsData.reviews && reviewsData.reviews.length > 0) {
+          reviewsData.reviews.forEach(r => {
+            const star = Math.round(r.rating);
+            if (ratingDistribution[star] !== undefined) {
+              ratingDistribution[star] += 1;
+            }
+          });
+        }
+
+        return (
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <h3 className="font-extrabold text-slate-900 text-lg border-b pb-3 flex items-center gap-2">
+              <span>⭐</span> Đánh Giá Từ Khách Hàng ({reviewsCount})
+            </h3>
+            
+            {reviewsLoading ? (
+              <div className="flex justify-center py-6">
+                <svg className="animate-spin h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                  {/* Total Average */}
+                  <div className="text-center space-y-2 border-slate-100 md:border-r md:pr-8">
+                    <div className="text-5xl font-black text-slate-900">
+                      {reviewsData.averageRating || '5.0'}
+                    </div>
+                    <div className="flex justify-center text-amber-400 text-xl">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <span key={i}>
+                          {i < Math.round(reviewsData.averageRating || 5) ? '★' : '☆'}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Điểm trung bình</p>
+                  </div>
+
+                  {/* Distribution Bar chart */}
+                  <div className="md:col-span-2 space-y-2">
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = ratingDistribution[star] || 0;
+                      const percentage = reviewsCount > 0 ? (count / reviewsCount) * 100 : 0;
+                      return (
+                        <div key={star} className="flex items-center text-xs text-slate-600 gap-3">
+                          <span className="w-10 font-bold shrink-0">{star} sao</span>
+                          <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="bg-amber-400 h-2 rounded-full transition-all duration-500" 
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="w-20 text-slate-450 font-medium text-right shrink-0">{count} lượt</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Reviews List */}
+                <div className="border-t border-slate-100 pt-6 space-y-4 divide-y divide-slate-100">
+                  {reviewsData.reviews && reviewsData.reviews.length > 0 ? (
+                    reviewsData.reviews.map((review) => (
+                      <div key={review.id} className="pt-4 first:pt-0 space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-slate-800 text-sm">
+                              {review.userFullName || 'Khách hàng'}
+                            </span>
+                            <div className="flex text-amber-400 text-sm mt-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <span key={i}>{i < review.rating ? '★' : '☆'}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(review.createdAt).toLocaleDateString('vi-VN')}
+                          </span>
+                        </div>
+                        {review.comment ? (
+                          <p className="text-slate-600 text-xs leading-relaxed italic bg-slate-50/50 p-3 rounded-lg border border-slate-150">
+                            "{review.comment}"
+                          </p>
+                        ) : (
+                          <p className="text-slate-400 italic">Không có bình luận chi tiết.</p>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-slate-400 italic text-xs">
+                      Sản phẩm chưa có lượt bình luận nào. Hãy mua sản phẩm và viết đánh giá đầu tiên!
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

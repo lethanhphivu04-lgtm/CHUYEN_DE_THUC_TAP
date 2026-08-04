@@ -32,19 +32,22 @@ public static class DbSeeder
         }
 
         // 2. Seed Admin User
-        var adminEmail = "admin@gmail.com";
-        var adminUser = await userManager.FindByEmailAsync(adminEmail);
-        if (adminUser == null)
+        var adminEmails = new[] { "admin@gmail.com", "admin@marketplace.vn" };
+        foreach (var adminEmail in adminEmails)
         {
-            adminUser = new ApplicationUser
+            var adminUser = await userManager.FindByEmailAsync(adminEmail);
+            if (adminUser == null)
             {
-                UserName = adminEmail,
-                Email = adminEmail,
-                FullName = "Hệ Thống Admin",
-                EmailConfirmed = true
-            };
-            await userManager.CreateAsync(adminUser, "Admin123!");
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+                adminUser = new ApplicationUser
+                {
+                    UserName = adminEmail,
+                    Email = adminEmail,
+                    FullName = "Hệ Thống Admin",
+                    EmailConfirmed = true
+                };
+                await userManager.CreateAsync(adminUser, "Admin123!");
+                await userManager.AddToRoleAsync(adminUser, "Admin");
+            }
         }
 
         // 3. Seed Customer User

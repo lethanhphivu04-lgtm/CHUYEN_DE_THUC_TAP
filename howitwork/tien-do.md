@@ -39,14 +39,16 @@
 ## Phase 5: Admin Nâng Cao (Module 11)
 
 - [x] 5.1 Backend: Admin endpoints (user management, stats, audit log)
-- [ ] 5.2 Frontend: Admin user CRUD thật (lock/unlock, phân vai trò)
-- [ ] 5.3 Frontend: Admin dashboard thật (thống kê realtime)
-- [ ] 5.4 Frontend: Admin order management
+- [x] 5.2 Frontend: Admin user CRUD thật (lock/unlock, phân vai trò)
+- [x] 5.3 Frontend: Admin dashboard thật (thống kê realtime)
+- [x] 5.4 Frontend: Admin order management
 
 ## Phase 6: Mở rộng (Modules 7, 8, 9)
 
 - [x] 6.1 Voucher system (backend)
+- [x] 6.1.1 Frontend: Áp dụng Voucher khi đặt hàng & Admin quản lý mã giảm giá
 - [x] 6.2 Product Reviews & Ratings (backend)
+- [x] 6.2.1 Frontend: Viết đánh giá sản phẩm đã giao & Thống kê sao trang chi tiết
 - [x] 6.3 Wishlist (backend)
 - [x] 6.4 Returns & Refunds (backend)
 

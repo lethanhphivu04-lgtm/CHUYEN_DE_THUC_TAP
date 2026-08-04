@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { sellerService, orderService } from '../../../_lib/api';
+import { sellerService, orderService, productService, categoryService } from '../../../_lib/api';
 
 const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
@@ -13,6 +13,18 @@ export default function SellerDashboardPage() {
   const [wallet, setWallet] = useState(null);
   const [activeTab, setActiveTab] = useState('orders'); // 'orders' | 'wallet'
   const [loading, setLoading] = useState(true);
+
+  // Products states
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductDesc, setNewProductDesc] = useState('');
+  const [newProductCat, setNewProductCat] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductStock, setNewProductStock] = useState('10');
+  const [newProductImage, setNewProductImage] = useState('');
+  const [submittingProduct, setSubmittingProduct] = useState(false);
 
   // Withdraw form state
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -37,6 +49,15 @@ export default function SellerDashboardPage() {
       setStats(statsData);
       setOrders(ordersData);
       setWallet(walletData);
+
+      if (shopData) {
+        const [prodsData, catsData] = await Promise.all([
+          productService.getProducts({ sellerId: shopData.id, pageSize: 50 }).catch(() => ({ products: [] })),
+          categoryService.getAll().catch(() => [])
+        ]);
+        setProducts(prodsData.products || prodsData.items || []);
+        setCategories(catsData || []);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -86,6 +107,56 @@ export default function SellerDashboardPage() {
     }
   };
 
+  const handleDeleteProduct = async (id) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return;
+    try {
+      await productService.deleteProduct(id);
+      alert('Xóa sản phẩm thành công!');
+      if (shop) {
+        const prodsData = await productService.getProducts({ sellerId: shop.id, pageSize: 50 });
+        setProducts(prodsData.products || prodsData.items || []);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Không thể xóa sản phẩm.');
+    }
+  };
+
+  const handleProductSubmit = async (e) => {
+    e.preventDefault();
+    if (!newProductName.trim() || !newProductCat || !newProductPrice) {
+      alert('Vui lòng điền đầy đủ các thông tin bắt buộc.');
+      return;
+    }
+    setSubmittingProduct(true);
+    try {
+      const payload = {
+        name: newProductName.trim(),
+        description: newProductDesc.trim(),
+        categoryId: parseInt(newProductCat),
+        defaultPrice: parseFloat(newProductPrice),
+        defaultStock: parseInt(newProductStock) || 10,
+        images: newProductImage.trim() ? [{ imageUrl: newProductImage.trim(), isMain: true }] : []
+      };
+      await productService.createProduct(payload);
+      alert('Đăng bán sản phẩm mới thành công!');
+      setIsProductModalOpen(false);
+      setNewProductName('');
+      setNewProductDesc('');
+      setNewProductCat('');
+      setNewProductPrice('');
+      setNewProductStock('10');
+      setNewProductImage('');
+      if (shop) {
+        const prodsData = await productService.getProducts({ sellerId: shop.id, pageSize: 50 });
+        setProducts(prodsData.products || prodsData.items || []);
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Không thể đăng bán sản phẩm.');
+    } finally {
+      setSubmittingProduct(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -129,9 +200,16 @@ export default function SellerDashboardPage() {
         </div>
 
         <div className="flex gap-2">
-          <Link href="/admin/product" className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-indigo-700 transition-all">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('products');
+              setIsProductModalOpen(true);
+            }}
+            className="bg-indigo-600 text-white font-bold px-4 py-2 rounded-xl text-xs hover:bg-indigo-700 transition-all cursor-pointer"
+          >
             + Đăng Sản Phẩm Mới
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -167,6 +245,15 @@ export default function SellerDashboardPage() {
           }`}
         >
           📦 Đơn Hàng Của Shop ({orders.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('products')}
+          className={`pb-3 text-sm font-bold transition-all border-b-2 cursor-pointer ${
+            activeTab === 'products' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          🛍️ Sản Phẩm Của Shop ({products.length})
         </button>
 
         <button
@@ -387,6 +474,198 @@ export default function SellerDashboardPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: PRODUCTS MANAGEMENT */}
+      {activeTab === 'products' && (
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex justify-between items-center border-b pb-3">
+            <h2 className="font-bold text-slate-900 text-base">🛍️ Danh Sách Sản Phẩm Đang Bán</h2>
+            <button
+              onClick={() => setIsProductModalOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
+            >
+              + Đăng Sản Phẩm Mới
+            </button>
+          </div>
+
+          {products.length === 0 ? (
+            <div className="text-center py-8 text-slate-400 italic text-sm">
+              Shop chưa đăng bán sản phẩm nào. Hãy bấm đăng bán sản phẩm mới!
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="pb-3 pr-4">Hình ảnh</th>
+                    <th className="pb-3 pr-4">Tên sản phẩm</th>
+                    <th className="pb-3 pr-4">Danh mục</th>
+                    <th className="pb-3 pr-4">Giá bán</th>
+                    <th className="pb-3 pr-4">Tồn kho</th>
+                    <th className="pb-3 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {products.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3 pr-4">
+                        <img 
+                          src={p.mainImageUrl || 'https://via.placeholder.com/50'} 
+                          alt="" 
+                          className="w-10 h-10 rounded-lg object-cover border border-slate-200" 
+                        />
+                      </td>
+                      <td className="py-3 pr-4 font-semibold text-slate-800">
+                        {p.name}
+                      </td>
+                      <td className="py-3 pr-4 text-slate-500">
+                        {p.categoryName || 'Mặc định'}
+                      </td>
+                      <td className="py-3 pr-4 font-bold text-indigo-600">
+                        {p.minPrice === p.maxPrice ? formatPrice(p.minPrice) : `${formatPrice(p.minPrice)} - ${formatPrice(p.maxPrice)}`}
+                      </td>
+                      <td className="py-3 pr-4 text-slate-600 font-medium">
+                        {p.stockQuantity} sản phẩm
+                      </td>
+                      <td className="py-3 text-right">
+                        <button
+                          onClick={() => handleDeleteProduct(p.id)}
+                          className="text-rose-500 hover:text-rose-700 font-bold text-xs bg-rose-50 border border-rose-200 px-2.5 py-1 rounded transition-colors cursor-pointer"
+                        >
+                          Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* --- Product Creation Modal --- */}
+      {isProductModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Đăng Bán Sản Phẩm Mới</h3>
+              <p className="text-xs text-slate-500 mt-1">Điền thông tin chi tiết cho sản phẩm của gian hàng bạn</p>
+            </div>
+
+            <form onSubmit={handleProductSubmit} className="space-y-4">
+              <div className="space-y-3">
+                {/* Product Name */}
+                <div className="space-y-1 text-xs">
+                  <label className="font-semibold text-slate-700">Tên Sản Phẩm *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newProductName}
+                    onChange={(e) => setNewProductName(e.target.value)}
+                    placeholder="VD: Gối cao su non nâng đỡ cổ"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Category Selector */}
+                <div className="space-y-1 text-xs">
+                  <label className="font-semibold text-slate-700">Danh Mục Sản Phẩm *</label>
+                  <select
+                    required
+                    value={newProductCat}
+                    onChange={(e) => setNewProductCat(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  >
+                    <option value="">-- Chọn danh mục --</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Price and Stock */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1 text-xs">
+                    <label className="font-semibold text-slate-700">Giá Bán (VND) *</label>
+                    <input
+                      type="number"
+                      required
+                      min={1000}
+                      value={newProductPrice}
+                      onChange={(e) => setNewProductPrice(e.target.value)}
+                      placeholder="VD: 250000"
+                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <label className="font-semibold text-slate-700">Số Lượng Tồn Kho *</label>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={newProductStock}
+                      onChange={(e) => setNewProductStock(e.target.value)}
+                      placeholder="VD: 50"
+                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Main Image URL */}
+                <div className="space-y-1 text-xs">
+                  <label className="font-semibold text-slate-700">URL Hình Ảnh Sản Phẩm</label>
+                  <input
+                    type="url"
+                    value={newProductImage}
+                    onChange={(e) => setNewProductImage(e.target.value)}
+                    placeholder="VD: https://images.unsplash.com/..."
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1 text-xs">
+                  <label className="font-semibold text-slate-700">Mô Tả Sản Phẩm</label>
+                  <textarea
+                    rows={4}
+                    value={newProductDesc}
+                    onChange={(e) => setNewProductDesc(e.target.value)}
+                    placeholder="Nhập mô tả chi tiết của sản phẩm (chất liệu, công dụng, bảo hành...)"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsProductModalOpen(false)}
+                  disabled={submittingProduct}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingProduct || !newProductName.trim() || !newProductCat || !newProductPrice}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  {submittingProduct ? (
+                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : null}
+                  Đăng Bán
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

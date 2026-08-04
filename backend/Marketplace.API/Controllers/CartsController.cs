@@ -111,7 +111,6 @@ public class CartsController : ControllerBase
             });
         }
 
-        cart.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return Ok(new { message = "Đã thêm vào giỏ hàng." });
     }
@@ -142,7 +141,6 @@ public class CartsController : ControllerBase
             item.Quantity = dto.Quantity;
         }
 
-        cart.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return Ok(new { message = "Cập nhật giỏ hàng thành công." });
     }

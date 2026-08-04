@@ -35,6 +35,7 @@ public class ProductsController : ControllerBase
         [FromQuery] decimal? minPrice,
         [FromQuery] decimal? maxPrice,
         [FromQuery] string? sortBy,
+        [FromQuery] int? sellerId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12)
     {
@@ -44,6 +45,11 @@ public class ProductsController : ControllerBase
             .Include(p => p.Skus)
             .Include(p => p.Images)
             .AsQueryable();
+
+        if (sellerId.HasValue)
+        {
+            query = query.Where(p => p.SellerId == sellerId.Value);
+        }
 
         // Filtering
         if (!string.IsNullOrEmpty(search))

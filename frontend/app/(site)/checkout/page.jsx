@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { addressService, cartService, orderService, paymentService } from '../../_lib/api';
+import { addressService, cartService, orderService, paymentService, voucherService } from '../../_lib/api';
 
 const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
 
@@ -17,15 +17,25 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Voucher states
+  const [vouchers, setVouchers] = useState([]);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
+  const [voucherCode, setVoucherCode] = useState('');
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [voucherError, setVoucherError] = useState('');
+  const [applyingVoucher, setApplyingVoucher] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [addrData, itemsData] = await Promise.all([
+        const [addrData, itemsData, vouchersData] = await Promise.all([
           addressService.getMyAddresses(),
-          cartService.getMyCart()
+          cartService.getMyCart(),
+          voucherService.getActiveVouchers().catch(() => [])
         ]);
         setAddresses(addrData);
         setCartItems(itemsData);
+        setVouchers(vouchersData || []);
 
         // Pre-select default address or first address
         const def = addrData.find(a => a.isDefault) || addrData[0];
@@ -41,6 +51,26 @@ export default function CheckoutPage() {
     fetchData();
   }, []);
 
+  const handleApplyVoucher = async (codeToApply = voucherCode) => {
+    if (!codeToApply.trim()) return;
+    setApplyingVoucher(true);
+    setVoucherError('');
+    try {
+      const res = await voucherService.applyVoucher(codeToApply.trim().toUpperCase(), totalAmount);
+      setDiscountAmount(res.discountAmount || 0);
+      setSelectedVoucher(res.code);
+      setVoucherCode(res.code);
+      alert(res.message || 'Áp dụng mã giảm giá thành công!');
+    } catch (err) {
+      console.error(err);
+      setVoucherError(err.response?.data?.message || 'Không thể áp dụng mã giảm giá.');
+      setDiscountAmount(0);
+      setSelectedVoucher(null);
+    } finally {
+      setApplyingVoucher(false);
+    }
+  };
+
   const handleCheckout = async () => {
     if (!selectedAddressId) {
       alert('Vui lòng chọn địa chỉ nhận hàng.');
@@ -51,7 +81,7 @@ export default function CheckoutPage() {
     setError('');
 
     try {
-      const res = await orderService.checkout(selectedAddressId, paymentMethod);
+      const res = await orderService.checkout(selectedAddressId, paymentMethod, selectedVoucher);
       if (paymentMethod === 'VNPay') {
         const payRes = await paymentService.createVnPayUrl(res.orderId);
         if (payRes.paymentUrl) {
@@ -271,14 +301,80 @@ export default function CheckoutPage() {
                 <span>Tổng tiền hàng</span>
                 <span>{formatPrice(totalAmount)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-600 font-semibold">
+                  <span>Giảm giá ({selectedVoucher})</span>
+                  <span>-{formatPrice(discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-600">
                 <span>Phí vận chuyển</span>
                 <span className="text-emerald-600 font-semibold">Miễn phí</span>
               </div>
               <div className="border-t border-slate-100 pt-3 flex justify-between font-bold text-slate-900 text-lg">
                 <span>Tổng cộng</span>
-                <span className="text-indigo-600">{formatPrice(totalAmount)}</span>
+                <span className="text-indigo-600">{formatPrice(Math.max(0, totalAmount - discountAmount))}</span>
               </div>
+            </div>
+
+            {/* Voucher UI Section */}
+            <div className="border-t border-slate-100 pt-3 space-y-3">
+              <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Mã Giảm Giá Sàn</h4>
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Nhập mã..."
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs uppercase font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleApplyVoucher()}
+                  disabled={applyingVoucher || !voucherCode.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+                >
+                  Áp dụng
+                </button>
+              </div>
+
+              {voucherError && (
+                <p className="text-[11px] text-rose-500 font-semibold">{voucherError}</p>
+              )}
+
+              {vouchers.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Mã giảm giá khả dụng:</p>
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                    {vouchers.map(v => {
+                      const isDisabled = totalAmount < v.minOrderAmount;
+                      const isSelected = selectedVoucher === v.code;
+                      return (
+                        <button
+                          key={v.id}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => {
+                            setVoucherCode(v.code);
+                            handleApplyVoucher(v.code);
+                          }}
+                          className={`text-[10px] font-bold font-mono px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : isDisabled
+                                ? 'bg-slate-50 text-slate-350 border-slate-200/50 cursor-not-allowed'
+                                : 'bg-indigo-50 text-indigo-700 border-indigo-150 hover:bg-indigo-100'
+                          }`}
+                          title={isDisabled ? `Đơn tối thiểu ${formatPrice(v.minOrderAmount)}` : `Giảm ${v.discountPercent ? `${v.discountPercent}%` : formatPrice(v.discountAmount)}`}
+                        >
+                          {v.code}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <button

@@ -10,32 +10,32 @@ const api = axios.create({
 });
 
 // Request interceptor to attach JWT token
-if (typeof window !== 'undefined') {
-  api.interceptors.request.use(
-    (config) => {
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
     }
-  );
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-  api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.dispatchEvent(new Event('authChange'));
-      }
-      return Promise.reject(error);
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== 'undefined' && error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('authChange'));
     }
-  );
-}
+    return Promise.reject(error);
+  }
+);
 
 export const authService = {
   async login(email, password) {
@@ -200,8 +200,8 @@ export const cartService = {
 };
 
 export const orderService = {
-  async checkout(addressId, paymentMethod = 'COD') {
-    const response = await api.post('/orders/checkout', { addressId, paymentMethod });
+  async checkout(addressId, paymentMethod = 'COD', voucherCode = null) {
+    const response = await api.post('/orders/checkout', { addressId, paymentMethod, voucherCode });
     return response.data;
   },
 
@@ -303,6 +303,91 @@ export const sellerService = {
 
   async processWithdrawal(id, isApproved, note) {
     const response = await api.post(`/sellers/withdrawals/${id}/process`, { isApproved, note });
+    return response.data;
+  },
+};
+
+export const adminUserService = {
+  async getUsers(search = '') {
+    try {
+      const response = await api.get('/admin/users', { params: { search } });
+      return response.data;
+    } catch (error) {
+      console.warn('Backend API disconnected:', error.message);
+      return [];
+    }
+  },
+
+  async toggleLock(id) {
+    const response = await api.post(`/admin/users/${id}/toggle-lock`);
+    return response.data;
+  },
+
+  async assignRole(id, roleName) {
+    const response = await api.post(`/admin/users/${id}/assign-role`, { roleName });
+    return response.data;
+  },
+};
+
+export const adminDashboardService = {
+  async getStats() {
+    try {
+      const response = await api.get('/admin/dashboard/stats');
+      return response.data;
+    } catch (error) {
+      console.warn('Backend API disconnected:', error.message);
+      return null;
+    }
+  },
+};
+
+export const adminOrderService = {
+  async getAllOrders(search = '') {
+    const response = await api.get('/admin/orders', {
+      params: { search }
+    });
+    return response.data;
+  },
+
+  async cancelOrder(subOrderId, note) {
+    const response = await api.post(`/orders/${subOrderId}/status`, {
+      newStatus: 'Cancelled',
+      note
+    });
+    return response.data;
+  },
+};
+
+export const voucherService = {
+  async getActiveVouchers() {
+    const response = await api.get('/vouchers');
+    return response.data;
+  },
+
+  async applyVoucher(code, orderAmount) {
+    const response = await api.post('/vouchers/apply', { code, orderAmount });
+    return response.data;
+  },
+
+  async createVoucher(voucherData) {
+    const response = await api.post('/vouchers', voucherData);
+    return response.data;
+  },
+
+  async deleteVoucher(id) {
+    const response = await api.delete(`/vouchers/${id}`);
+    return response.data;
+  },
+};
+
+export const productReviewService = {
+  async getProductReviews(productId) {
+    const response = await api.get(`/ProductReviews/product/${productId}`);
+    return response.data;
+  },
+
+  async createReview(productId, subOrderId, rating, comment) {
+    const response = await api.post('/ProductReviews', { productId, subOrderId, rating, comment });
     return response.data;
   },
 };

@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { orderService } from '../../../_lib/api';
+import { orderService, productReviewService } from '../../../_lib/api';
 
-const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p);
+const formatPrice = (p) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p || 0);
 
 const STATUS_MAP = {
   Pending: { label: 'Chờ xử lý', color: 'bg-amber-100 text-amber-800 border-amber-200' },
@@ -12,6 +12,7 @@ const STATUS_MAP = {
   Shipping: { label: 'Đang giao hàng', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
   Delivered: { label: 'Đã giao hàng', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   Cancelled: { label: 'Đã hủy', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+  Returned: { label: 'Đã trả hàng/Hoàn tiền', color: 'bg-slate-100 text-slate-600 border-slate-200' },
 };
 
 export default function OrderHistoryPage() {
@@ -21,12 +22,22 @@ export default function OrderHistoryPage() {
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [cancelingId, setCancelingId] = useState(null);
 
+  // Review state variables
+  const [reviewedItems, setReviewedItems] = useState({});
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewSubOrderId, setReviewSubOrderId] = useState(null);
+  const [reviewProductId, setReviewProductId] = useState(null);
+  const [reviewProductName, setReviewProductName] = useState('');
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   const fetchOrders = async () => {
     try {
       const data = await orderService.getMyOrders();
-      setOrders(data);
+      setOrders(data || []);
     } catch (err) {
-      console.error(err);
+      console.error('Lỗi khi tải lịch sử đơn hàng:', err);
       setError('Không thể tải lịch sử đơn hàng.');
     } finally {
       setLoading(false);
@@ -60,6 +71,42 @@ export default function OrderHistoryPage() {
       setSelectedOrderDetail(detail);
     } catch (err) {
       alert('Không thể xem chi tiết đơn hàng.');
+    }
+  };
+
+  // Review functions
+  const openReviewModal = (subOrderId, productId, productName) => {
+    setReviewSubOrderId(subOrderId);
+    setReviewProductId(productId);
+    setReviewProductName(productName);
+    setRating(5);
+    setComment('');
+    setIsReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!comment.trim()) {
+      alert('Vui lòng nhập nhận xét sản phẩm.');
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      await productReviewService.createReview(reviewProductId, reviewSubOrderId, rating, comment.trim());
+      alert('Gửi đánh giá thành công! Cảm ơn ý kiến của bạn.');
+      setReviewedItems(prev => ({ ...prev, [`${reviewSubOrderId}_${reviewProductId}`]: true }));
+      setIsReviewModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      const msg = err.response?.data?.message || 'Không thể gửi đánh giá.';
+      alert(msg);
+      // If already reviewed, update UI as well
+      if (msg.includes('đã gửi đánh giá') || msg.includes('đã đánh giá')) {
+        setReviewedItems(prev => ({ ...prev, [`${reviewSubOrderId}_${reviewProductId}`]: true }));
+        setIsReviewModalOpen(false);
+      }
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -103,9 +150,9 @@ export default function OrderHistoryPage() {
               {/* Order Header */}
               <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2 text-xs">
                 <div className="space-x-2">
-                  <span className="font-bold text-slate-800">Mã đơn: #{order.id}</span>
+                  <span className="font-bold text-slate-880">Mã đơn: #{order.id}</span>
                   <span className="text-slate-400">•</span>
-                  <span className="text-slate-500">
+                  <span className="text-slate-550">
                     {new Date(order.createdAt).toLocaleDateString('vi-VN', {
                       year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
                     })}
@@ -159,8 +206,24 @@ export default function OrderHistoryPage() {
                               {item.skuInfo && <div className="text-slate-400">{item.skuInfo}</div>}
                               <div className="text-slate-500">{formatPrice(item.priceSnapshot)} x {item.quantity}</div>
                             </div>
-                            <div className="font-bold text-slate-800 text-xs">
-                              {formatPrice(item.priceSnapshot * item.quantity)}
+                            <div className="font-bold text-slate-800 text-xs text-right">
+                              <div>{formatPrice(item.priceSnapshot * item.quantity)}</div>
+                              {subOrder.status === 'Delivered' && (
+                                <div className="mt-2">
+                                  {reviewedItems[`${subOrder.id}_${item.productId}`] ? (
+                                    <span className="text-[10px] font-bold text-emerald-650 bg-emerald-50 border border-emerald-250 px-2 py-0.5 rounded">
+                                      ✓ Đã đánh giá
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => openReviewModal(subOrder.id, item.productId, item.productName)}
+                                      className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-bold text-[10px] px-2 py-0.5 rounded transition-all cursor-pointer"
+                                    >
+                                      Đánh giá
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -245,6 +308,83 @@ export default function OrderHistoryPage() {
                 Đóng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Review Modal --- */}
+      {isReviewModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Đánh Giá Sản Phẩm</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Sản phẩm: <span className="font-bold text-slate-800">{reviewProductName}</span>
+              </p>
+            </div>
+
+            <form onSubmit={handleReviewSubmit} className="space-y-4">
+              {/* Star Rating Selector */}
+              <div className="space-y-1.5 text-center">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Chọn số sao</label>
+                <div className="flex justify-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="text-3xl focus:outline-none transition-all scale-100 hover:scale-110 cursor-pointer"
+                    >
+                      {star <= rating ? '⭐' : '☆'}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-xs font-bold text-amber-500 mt-1">
+                  {rating === 5 ? 'Cực kỳ hài lòng' :
+                   rating === 4 ? 'Hài lòng' :
+                   rating === 3 ? 'Bình thường' :
+                   rating === 2 ? 'Không hài lòng' : 'Rất tệ'}
+                </div>
+              </div>
+
+              {/* Comment text */}
+              <div className="space-y-1.5">
+                <label htmlFor="review-comment" className="block text-xs font-semibold text-slate-600 uppercase">Nhận xét của bạn *</label>
+                <textarea
+                  id="review-comment"
+                  rows={4}
+                  required
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Nhập nhận xét chi tiết về sản phẩm (chất lượng, đóng gói, giao hàng...)"
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReviewModalOpen(false)}
+                  disabled={submittingReview}
+                  className="px-4 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingReview || !comment.trim()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  {submittingReview ? (
+                    <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : null}
+                  Gửi Đánh Giá
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

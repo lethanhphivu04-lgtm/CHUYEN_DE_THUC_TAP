@@ -119,6 +119,38 @@ public class OrdersController : ControllerBase
             totalAmount += subTotal;
         }
 
+        // 4.5 Apply voucher if present
+        if (!string.IsNullOrEmpty(dto.VoucherCode))
+        {
+            var now = DateTime.UtcNow;
+            var voucher = await _context.Vouchers.FirstOrDefaultAsync(v => v.Code == dto.VoucherCode.ToUpper() && v.IsActive);
+            if (voucher == null || voucher.StartDate > now || voucher.ExpiryDate < now)
+                return BadRequest(new { message = "Mã giảm giá không tồn tại hoặc đã hết hạn." });
+
+            if (voucher.UsedCount >= voucher.UsageLimit)
+                return BadRequest(new { message = "Mã giảm giá đã hết lượt sử dụng." });
+
+            if (totalAmount < voucher.MinOrderAmount)
+                return BadRequest(new { message = $"Đơn hàng tối thiểu phải từ {voucher.MinOrderAmount:N0}đ để dùng mã này." });
+
+            decimal discount = 0;
+            if (voucher.DiscountAmount.HasValue && voucher.DiscountAmount > 0)
+            {
+                discount = voucher.DiscountAmount.Value;
+            }
+            else if (voucher.DiscountPercent.HasValue && voucher.DiscountPercent > 0)
+            {
+                discount = totalAmount * (voucher.DiscountPercent.Value / 100m);
+                if (voucher.MaxDiscountAmount.HasValue && discount > voucher.MaxDiscountAmount.Value)
+                {
+                    discount = voucher.MaxDiscountAmount.Value;
+                }
+            }
+
+            totalAmount = Math.Max(0, totalAmount - discount);
+            voucher.UsedCount += 1;
+        }
+
         order.TotalAmount = totalAmount;
 
         // 5. Save order + clear cart
@@ -313,6 +345,7 @@ public class CheckoutDto
 {
     public int AddressId { get; set; }
     public string? PaymentMethod { get; set; }
+    public string? VoucherCode { get; set; }
 }
 
 public class UpdateStatusDto
