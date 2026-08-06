@@ -142,6 +142,11 @@ public static class DbSeeder
         // If categories and many products already exist, skip duplicate seeding
         if (await context.Products.CountAsync() >= 50)
         {
+            if (!await context.Products.AnyAsync(p => p.Name == "iPhone 15 Pro Max (Đa Phân Loại)"))
+            {
+                await SeedMultiSkuProductsAsync(context);
+            }
+            await SeedHistoricalDataAsync(context, userManager);
             return;
         }
 
@@ -244,8 +249,31 @@ public static class DbSeeder
                 SellerId = s.Id,
                 CreatedAt = DateTime.UtcNow
             };
+            
+            // Add original SKU
             var skuCode = $"{s.Id}-{c.Id}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
             p.Skus.Add(new ProductSku { SkuCode = skuCode, Price = price, StockQuantity = stock, Size = size, Color = color });
+
+            // Automatically generate 2 additional random variations for EVERY product
+            var extraColors = new[] { "Đen", "Trắng", "Xám", "Bạc", "Vàng Hồng", "Xanh Navy", "Đỏ" };
+            var extraSizes = new[] { "S", "M", "L", "XL", "256GB", "512GB", "Standard", "Free Size" };
+            var rnd = new Random();
+
+            for (int i = 0; i < 2; i++)
+            {
+                var rColor = extraColors[rnd.Next(extraColors.Length)];
+                var rSize = extraSizes[rnd.Next(extraSizes.Length)];
+                
+                // Ensure no duplicate exact matching sku string
+                if (rColor != color || rSize != size)
+                {
+                    var extraCode = $"{s.Id}-{c.Id}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
+                    // slight price difference
+                    decimal extraPrice = price + (rnd.Next(1, 10) * 50000);
+                    p.Skus.Add(new ProductSku { SkuCode = extraCode, Price = extraPrice, StockQuantity = rnd.Next(5, 50), Size = rSize, Color = rColor });
+                }
+            }
+
             p.Images.Add(new ProductImage { ImageUrl = img, IsMain = true });
             context.Products.Add(p);
         }
@@ -341,6 +369,7 @@ public static class DbSeeder
         AddProd(s6, catFurniture, "Gối Đệm Tựa Lưng Văn Phòng Memory Foam", "Mút ruột cao su non nguyên khối nâng đỡ thắt lưng chống mỏi tối đa.", "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?q=80&w=600", 260000, 60, "Standard", "Xám Mịn");
 
         await context.SaveChangesAsync();
+        await SeedHistoricalDataAsync(context, userManager);
     }
 
     private static async Task EnsureCartAndOrderTablesExistAsync(ApplicationDbContext context)
@@ -429,5 +458,236 @@ BEGIN
     );
 END";
         await context.Database.ExecuteSqlRawAsync(sql);
+    }
+
+    private static async Task SeedMultiSkuProductsAsync(ApplicationDbContext context)
+    {
+        var sellers = await context.Sellers.Take(2).ToListAsync();
+        var catTech = await context.Categories.FirstOrDefaultAsync(c => c.Name.Contains("Điện Thoại"));
+        var catFashion = await context.Categories.FirstOrDefaultAsync(c => c.Name.Contains("Thời Trang"));
+        
+        if (sellers.Count < 2 || catTech == null || catFashion == null) return;
+
+        // Tech Product with variations
+        var p1 = new Product
+        {
+            Name = "iPhone 15 Pro Max (Đa Phân Loại)",
+            Description = "Điện thoại thông minh với nhiều tùy chọn bộ nhớ và màu sắc. Chọn đúng phân loại bạn muốn mua.",
+            CategoryId = catTech.Id,
+            SellerId = sellers[0].Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        p1.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=600", IsMain = true });
+        
+        var variants1 = new List<(string Size, string Color, decimal Price, int Stock)>
+        {
+            ("256GB", "Titan Tự Nhiên", 29990000, 10),
+            ("256GB", "Titan Trắng", 29990000, 15),
+            ("512GB", "Titan Tự Nhiên", 34990000, 5),
+            ("512GB", "Titan Trắng", 34990000, 8),
+            ("1TB", "Titan Đen", 41990000, 3)
+        };
+
+        foreach (var v in variants1)
+        {
+            p1.Skus.Add(new ProductSku
+            {
+                SkuCode = $"IP15PM-{v.Size}-{v.Color.Replace(" ", "")}",
+                Price = v.Price,
+                StockQuantity = v.Stock,
+                Size = v.Size,
+                Color = v.Color
+            });
+        }
+        context.Products.Add(p1);
+
+        // Fashion Product with variations
+        var p2 = new Product
+        {
+            Name = "Áo Phông Nam Basic (Nhiều Size/Màu)",
+            Description = "Áo thun nam chất liệu 100% cotton thoáng mát, form rộng rãi dễ phối đồ.",
+            CategoryId = catFashion.Id,
+            SellerId = sellers[1].Id,
+            CreatedAt = DateTime.UtcNow
+        };
+        p2.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600", IsMain = true });
+        
+        var variants2 = new List<(string Size, string Color, decimal Price, int Stock)>
+        {
+            ("Size M", "Trắng", 150000, 50),
+            ("Size M", "Đen", 150000, 50),
+            ("Size L", "Trắng", 160000, 40),
+            ("Size L", "Đen", 160000, 40),
+            ("Size XL", "Đen", 170000, 20)
+        };
+
+        foreach (var v in variants2)
+        {
+            p2.Skus.Add(new ProductSku
+            {
+                SkuCode = $"TSHIRT-{v.Size}-{v.Color}",
+                Price = v.Price,
+                StockQuantity = v.Stock,
+                Size = v.Size,
+                Color = v.Color
+            });
+        }
+        context.Products.Add(p2);
+
+        await context.SaveChangesAsync();
+    }
+
+
+    private static async Task SeedHistoricalDataAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+    {
+        // Avoid duplicating historical data if already seeded
+        if (await context.Orders.CountAsync() >= 500)
+        {
+            return;
+        }
+
+        var random = new Random();
+        
+        // 1. Create 50 fake users (Members)
+        var fakeUsers = new List<ApplicationUser>();
+        for (int i = 1; i <= 50; i++)
+        {
+            var email = $"mockuser{i}@gmail.com";
+            var user = await userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                user = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    FullName = $"Khách hàng {i}",
+                    EmailConfirmed = true,
+                    CreatedAt = DateTime.UtcNow.AddDays(-random.Next(300, 365))
+                };
+                await userManager.CreateAsync(user, "Member123!");
+                await userManager.AddToRoleAsync(user, "Member");
+                
+                context.Addresses.Add(new Address
+                {
+                    UserId = user.Id,
+                    ReceiverName = user.FullName,
+                    Phone = "09" + random.Next(10000000, 99999999).ToString(),
+                    StreetAddress = $"Số {random.Next(1, 999)} Đường Test",
+                    Ward = "Phường 1",
+                    District = "Quận 1",
+                    City = "Hồ Chí Minh",
+                    IsDefault = true,
+                    CreatedAt = user.CreatedAt
+                });
+            }
+            fakeUsers.Add(user);
+        }
+        await context.SaveChangesAsync();
+
+        // 2. Fetch required entities
+        var products = await context.Products.Include(p => p.Skus).Include(p => p.Images).ToListAsync();
+        if (!products.Any()) return;
+        var sellers = await context.Sellers.Include(s => s.Wallet).ToListAsync();
+        var usersWithAddresses = await context.Users.Include(u => u.Addresses).Where(u => u.Email.StartsWith("mockuser")).ToListAsync();
+
+        if (!usersWithAddresses.Any()) return;
+
+        // 3. Generate 1000 orders distributed over the last 365 days
+        var startDate = DateTime.UtcNow.AddDays(-365);
+        for (int i = 1; i <= 1000; i++)
+        {
+            var user = usersWithAddresses[random.Next(usersWithAddresses.Count)];
+            var address = user.Addresses.FirstOrDefault();
+            if (address == null) continue;
+
+            // Random date in the last year
+            var orderDate = startDate.AddDays(random.NextDouble() * 365).AddHours(random.Next(0, 24));
+            
+            var order = new Order
+            {
+                UserId = user.Id,
+                AddressSnapshot = System.Text.Json.JsonSerializer.Serialize(new { address.ReceiverName, address.Phone, address.StreetAddress, address.Ward, address.District, address.City }),
+                PaymentMethod = random.Next(100) < 30 ? "VNPay" : "COD",
+                CreatedAt = orderDate
+            };
+
+            int numProducts = random.Next(1, 4); // 1 to 3 products per order
+            var selectedProducts = products.OrderBy(x => random.Next()).Take(numProducts).ToList();
+            
+            var grouped = selectedProducts.GroupBy(p => p.SellerId);
+            decimal totalAmount = 0;
+
+            foreach (var group in grouped)
+            {
+                var seller = sellers.FirstOrDefault(s => s.Id == group.Key);
+                if (seller == null) continue;
+
+                var deliveredDate = orderDate.AddDays(random.Next(2, 5));
+                var subOrder = new SubOrder
+                {
+                    SellerId = group.Key,
+                    Status = OrderStatus.Delivered,
+                    CreatedAt = orderDate,
+                    UpdatedAt = deliveredDate
+                };
+
+                decimal subTotal = 0;
+                foreach (var p in group)
+                {
+                    var sku = p.Skus.FirstOrDefault();
+                    if (sku == null) continue;
+                    
+                    int qty = random.Next(1, 3);
+                    var price = sku.Price;
+                    
+                    subOrder.Items.Add(new OrderItem
+                    {
+                        ProductSkuId = sku.Id,
+                        ProductId = p.Id,
+                        ProductName = p.Name,
+                        SkuInfo = sku.Size ?? "Standard",
+                        PriceSnapshot = price,
+                        Quantity = qty,
+                        ImageUrl = p.Images.FirstOrDefault()?.ImageUrl
+                    });
+                    
+                    subTotal += price * qty;
+                }
+                
+                subOrder.SubTotal = subTotal;
+                
+                // Add Histories
+                subOrder.StatusHistories.Add(new OrderStatusHistory { FromStatus = OrderStatus.Pending, ToStatus = OrderStatus.Pending, Note = "Đơn hàng được tạo", CreatedAt = orderDate });
+                subOrder.StatusHistories.Add(new OrderStatusHistory { FromStatus = OrderStatus.Pending, ToStatus = OrderStatus.Processing, Note = "Người bán đang chuẩn bị hàng", CreatedAt = orderDate.AddHours(random.Next(1, 12)) });
+                subOrder.StatusHistories.Add(new OrderStatusHistory { FromStatus = OrderStatus.Processing, ToStatus = OrderStatus.Shipping, Note = "Đã giao cho ĐVVC", CreatedAt = orderDate.AddDays(1) });
+                subOrder.StatusHistories.Add(new OrderStatusHistory { FromStatus = OrderStatus.Shipping, ToStatus = OrderStatus.Delivered, Note = "Giao hàng thành công", CreatedAt = deliveredDate });
+
+                // Update seller wallet
+                if (seller.Wallet == null) 
+                {
+                    seller.Wallet = new SellerWallet { SellerId = seller.Id, Balance = 0, LockedBalance = 0 };
+                    context.SellerWallets.Add(seller.Wallet);
+                }
+                
+                seller.Wallet.Balance += subTotal;
+                seller.Wallet.UpdatedAt = deliveredDate;
+                
+                context.WalletTransactions.Add(new WalletTransaction
+                {
+                    Wallet = seller.Wallet,
+                    Amount = subTotal,
+                    Type = TransactionType.SaleRevenue,
+                    Description = $"Doanh thu từ đơn hàng (Tạo tự động)",
+                    CreatedAt = deliveredDate
+                });
+
+                order.SubOrders.Add(subOrder);
+                totalAmount += subTotal;
+            }
+            
+            order.TotalAmount = totalAmount;
+            context.Orders.Add(order);
+        }
+        await context.SaveChangesAsync();
     }
 }

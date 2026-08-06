@@ -33,7 +33,7 @@ public class DashboardController : ControllerBase
 
         var totalRevenue = await _context.SubOrders
             .Where(so => so.Status == OrderStatus.Delivered)
-            .SumAsync(so => so.SubTotal);
+            .SumAsync(so => (decimal?)so.SubTotal) ?? 0m;
 
         var recentOrders = await _context.Orders
             .Include(o => o.User)

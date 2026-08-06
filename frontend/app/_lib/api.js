@@ -72,31 +72,16 @@ export const authService = {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
   },
+
+  isLoggedIn() {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem('token');
+  },
 };
 
-export const addressService = {
-  async getMyAddresses() {
-    const response = await api.get('/addresses');
-    return response.data;
-  },
-
-  async getAddressById(id) {
-    const response = await api.get(`/addresses/${id}`);
-    return response.data;
-  },
-
-  async createAddress(addressData) {
-    const response = await api.post('/addresses', addressData);
-    return response.data;
-  },
-
-  async updateAddress(id, addressData) {
-    const response = await api.put(`/addresses/${id}`, addressData);
-    return response.data;
-  },
-
-  async deleteAddress(id) {
-    const response = await api.delete(`/addresses/${id}`);
+export const chatbotService = {
+  async ask(prompt) {
+    const response = await api.post('/chatbot/ask', { prompt });
     return response.data;
   },
 };
@@ -223,6 +208,11 @@ export const orderService = {
 
   async cancelSubOrder(subOrderId) {
     const response = await api.post('/orders/' + subOrderId + '/cancel');
+    return response.data;
+  },
+
+  async updateSubOrderStatus(subOrderId, newStatus, note = null) {
+    const response = await api.post(`/orders/${subOrderId}/status`, { newStatus, note });
     return response.data;
   },
 };
@@ -388,6 +378,33 @@ export const productReviewService = {
 
   async createReview(productId, subOrderId, rating, comment) {
     const response = await api.post('/ProductReviews', { productId, subOrderId, rating, comment });
+    return response.data;
+  },
+};
+
+export const addressService = {
+  async getMyAddresses() {
+    const response = await api.get('/addresses');
+    return response.data;
+  },
+
+  async getAddressById(id) {
+    const response = await api.get(`/addresses/${id}`);
+    return response.data;
+  },
+
+  async createAddress(addressData) {
+    const response = await api.post('/addresses', addressData);
+    return response.data;
+  },
+
+  async updateAddress(id, addressData) {
+    const response = await api.put(`/addresses/${id}`, addressData);
+    return response.data;
+  },
+
+  async deleteAddress(id) {
+    const response = await api.delete(`/addresses/${id}`);
     return response.data;
   },
 };

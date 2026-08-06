@@ -21,6 +21,7 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState('');
   const [cartSuccess, setCartSuccess] = useState(false);
+  const [cartError, setCartError] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
 
   // Review states
@@ -95,18 +96,19 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = async () => {
     const user = authService.getCurrentUser();
-    if (!user) {
-      alert('Vui lòng đăng nhập tài khoản để thêm sản phẩm vào giỏ hàng.');
-      router.push('/login');
+    if (!authService.isLoggedIn()) {
+      setCartError('Vui lòng đăng nhập tài khoản để thêm sản phẩm vào giỏ hàng.');
+      setTimeout(() => router.push('/login'), 1500);
       return;
     }
 
     if (!selectedSku) {
-      alert('Vui lòng chọn đầy đủ phân loại màu sắc và kích thước.');
+      setCartError('Vui lòng chọn đầy đủ phân loại màu sắc và kích thước.');
       return;
     }
     
     setAddingToCart(true);
+    setCartError('');
     try {
       await cartService.addItem(selectedSku.id, quantity);
       window.dispatchEvent(new Event('cartChange'));
@@ -116,13 +118,13 @@ export default function ProductDetailPage() {
       }, 4000);
     } catch (err) {
       if (err.response?.status === 401) {
-        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-        router.push('/login');
+        setCartError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        setTimeout(() => router.push('/login'), 1500);
         return;
       }
-      console.error('Chi tiết lỗi từ máy chủ:', err.response?.data || err.message);
       const msg = err.response?.data?.message || 'Có lỗi xảy ra khi thêm vào giỏ hàng. Vui lòng thử lại.';
-      alert(msg);
+      setCartError(msg);
+      setTimeout(() => setCartError(''), 5000);
     } finally {
       setAddingToCart(false);
     }
@@ -239,19 +241,28 @@ export default function ProductDetailPage() {
               <div className="space-y-2">
                 <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Màu sắc</span>
                 <div className="flex flex-wrap gap-2">
-                  {colors.map((color) => (
-                    <button
-                      key={color}
-                      onClick={() => setSelectedColor(color)}
-                      className={`px-3 py-1.5 border rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        selectedColor === color
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                          : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
-                      }`}
-                    >
-                      {color}
-                    </button>
-                  ))}
+                  {colors.map((color) => {
+                    const available = !selectedSize || product.skus.some(s => s.color === color && s.size === selectedSize);
+                    return (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          if (!available) setSelectedSize(''); // Clear conflicting size
+                          setSelectedColor(color);
+                        }}
+                        className={`px-3 py-1.5 border rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          selectedColor === color
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                            : available 
+                              ? 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                              : 'border-dashed border-slate-200 text-slate-400 bg-slate-50 opacity-60'
+                        }`}
+                        title={!available ? 'Phân loại này không có sẵn cho kích thước đang chọn' : ''}
+                      >
+                        {color}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -261,19 +272,28 @@ export default function ProductDetailPage() {
               <div className="space-y-2">
                 <span className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Kích thước</span>
                 <div className="flex flex-wrap gap-2">
-                  {sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`px-3 py-1.5 border rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        selectedSize === size
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
-                          : 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {sizes.map((size) => {
+                    const available = !selectedColor || product.skus.some(s => s.size === size && s.color === selectedColor);
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          if (!available) setSelectedColor(''); // Clear conflicting color
+                          setSelectedSize(size);
+                        }}
+                        className={`px-3 py-1.5 border rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          selectedSize === size
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                            : available 
+                              ? 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white'
+                              : 'border-dashed border-slate-200 text-slate-400 bg-slate-50 opacity-60'
+                        }`}
+                        title={!available ? 'Phân loại này không có sẵn cho màu sắc đang chọn' : ''}
+                      >
+                        {size}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -327,11 +347,21 @@ export default function ProductDetailPage() {
 
             {/* Cart Success Alert */}
             {cartSuccess && (
-              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-xs font-semibold flex items-center justify-between">
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-xs font-semibold flex items-center justify-between shadow-sm animate-fadeIn">
                 <span>✓ Đã thêm sản phẩm vào giỏ hàng!</span>
                 <Link href="/cart" className="underline hover:text-emerald-800">
                   Xem giỏ hàng →
                 </Link>
+              </div>
+            )}
+
+            {/* Cart Error Alert */}
+            {cartError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-xs font-semibold flex items-center justify-between shadow-sm animate-fadeIn">
+                <span>⚠️ {cartError}</span>
+                <button onClick={() => setCartError('')} className="text-red-500 hover:text-red-700 font-bold ml-2 cursor-pointer">
+                  ✕
+                </button>
               </div>
             )}
           </div>

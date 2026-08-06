@@ -63,4 +63,4 @@
 
 - [x] 8.1 Chatbot Gemini AI integration (backend)
 - [x] 8.2 Autocomplete search (backend)
-- [ ] 8.3 UI/UX polish toàn bộ
+- [x] 8.3 UI/UX polish toàn bộ (Tích hợp Trợ lý AI Gemini widget, tối ưu UI/UX)

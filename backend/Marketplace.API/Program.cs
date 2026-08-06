@@ -141,6 +141,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
 // Seed Database Roles, Admin, Sellers, Categories, and Products
 await DbSeeder.SeedAsync(app.Services);
