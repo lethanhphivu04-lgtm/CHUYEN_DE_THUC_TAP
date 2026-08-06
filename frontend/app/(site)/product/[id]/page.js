@@ -222,12 +222,30 @@ export default function ProductDetailPage() {
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
               {selectedSku ? (
                 <div className="space-y-1">
-                  <div className="text-2xl sm:text-3xl font-black text-indigo-600">
-                    {formatPrice(selectedSku.price)}
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    <span className="text-2xl sm:text-3xl font-black text-indigo-600">
+                      {formatPrice(selectedSku.price)}
+                    </span>
+                    {selectedSku.originalPrice && selectedSku.originalPrice > selectedSku.price && (
+                      <>
+                        <span className="text-sm sm:text-base text-slate-400 line-through">
+                          {formatPrice(selectedSku.originalPrice)}
+                        </span>
+                        <span className="bg-rose-100 text-rose-700 font-bold text-xs px-2 py-0.5 rounded-full">
+                          -{Math.round(((selectedSku.originalPrice - selectedSku.price) / selectedSku.originalPrice) * 100)}%
+                        </span>
+                      </>
+                    )}
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-slate-500 pt-1">
                     Mã SKU: <span className="font-semibold">{selectedSku.skuCode}</span>
                   </div>
+                  {selectedSku.discountEndDate && new Date(selectedSku.discountEndDate) > new Date() && (
+                    <div className="text-[11px] text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-2.5 py-1 mt-2 flex items-center gap-1.5 w-fit">
+                      <span className="animate-pulse">⏰</span>
+                      <span>Ưu đãi kết thúc vào: <span className="font-bold">{new Date(selectedSku.discountEndDate).toLocaleString('vi-VN')}</span></span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-lg text-slate-500 font-semibold italic">

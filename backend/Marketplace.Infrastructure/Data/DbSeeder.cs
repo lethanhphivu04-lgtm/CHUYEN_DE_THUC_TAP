@@ -18,8 +18,41 @@ public static class DbSeeder
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-        await context.Database.MigrateAsync();
+        try
+        {
+            await context.Database.MigrateAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Database Migration Warning]: {ex.Message}");
+        }
         await EnsureCartAndOrderTablesExistAsync(context);
+
+        // Backward compatibility: Populate OriginalPrice for existing database SKUs randomly
+        var skusWithoutOriginalPrice = await context.ProductSkus.Where(s => s.OriginalPrice == null).ToListAsync();
+        if (skusWithoutOriginalPrice.Any())
+        {
+            var rnd = new Random();
+            foreach (var sku in skusWithoutOriginalPrice)
+            {
+                if (rnd.Next(1, 10) <= 4) // 40% chance
+                {
+                    sku.OriginalPrice = Math.Round(sku.Price * (1 + (decimal)(rnd.Next(15, 40) / 100.0)) / 10000) * 10000;
+                }
+            }
+            await context.SaveChangesAsync();
+        }
+
+        // Backward compatibility: Auto-approve all existing pending sellers
+        var pendingSellers = await context.Sellers.Where(s => s.Status == SellerStatus.PendingApproval).ToListAsync();
+        if (pendingSellers.Any())
+        {
+            foreach (var s in pendingSellers)
+            {
+                s.Status = SellerStatus.Approved;
+            }
+            await context.SaveChangesAsync();
+        }
 
         // 1. Seed Roles
         string[] roles = ["Admin", "Seller", "Member", "Guest"];
@@ -230,6 +263,7 @@ public static class DbSeeder
                     ShopName = cfg.Shop,
                     Description = cfg.Desc,
                     IsActive = true,
+                    Status = SellerStatus.Approved,
                     CreatedAt = DateTime.UtcNow
                 };
                 context.Sellers.Add(seller);
@@ -252,12 +286,18 @@ public static class DbSeeder
             
             // Add original SKU
             var skuCode = $"{s.Id}-{c.Id}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
-            p.Skus.Add(new ProductSku { SkuCode = skuCode, Price = price, StockQuantity = stock, Size = size, Color = color });
+            var rnd = new Random();
+            decimal? originalPrice = null;
+            if (rnd.Next(1, 10) <= 4) // 40% chance of discount
+            {
+                // Round to nearest 10,000 VND
+                originalPrice = Math.Round(price * (1 + (decimal)(rnd.Next(15, 40) / 100.0)) / 10000) * 10000;
+            }
+            p.Skus.Add(new ProductSku { SkuCode = skuCode, Price = price, OriginalPrice = originalPrice, StockQuantity = stock, Size = size, Color = color });
 
             // Automatically generate 2 additional random variations for EVERY product
             var extraColors = new[] { "Đen", "Trắng", "Xám", "Bạc", "Vàng Hồng", "Xanh Navy", "Đỏ" };
             var extraSizes = new[] { "S", "M", "L", "XL", "256GB", "512GB", "Standard", "Free Size" };
-            var rnd = new Random();
 
             for (int i = 0; i < 2; i++)
             {
@@ -270,7 +310,12 @@ public static class DbSeeder
                     var extraCode = $"{s.Id}-{c.Id}-{Guid.NewGuid().ToString()[..6].ToUpper()}";
                     // slight price difference
                     decimal extraPrice = price + (rnd.Next(1, 10) * 50000);
-                    p.Skus.Add(new ProductSku { SkuCode = extraCode, Price = extraPrice, StockQuantity = rnd.Next(5, 50), Size = rSize, Color = rColor });
+                    decimal? extraOriginalPrice = null;
+                    if (rnd.Next(1, 10) <= 4) // 40% chance of discount
+                    {
+                        extraOriginalPrice = Math.Round(extraPrice * (1 + (decimal)(rnd.Next(15, 40) / 100.0)) / 10000) * 10000;
+                    }
+                    p.Skus.Add(new ProductSku { SkuCode = extraCode, Price = extraPrice, OriginalPrice = extraOriginalPrice, StockQuantity = rnd.Next(5, 50), Size = rSize, Color = rColor });
                 }
             }
 
@@ -479,13 +524,13 @@ END";
         };
         p1.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=600", IsMain = true });
         
-        var variants1 = new List<(string Size, string Color, decimal Price, int Stock)>
+        var variants1 = new List<(string Size, string Color, decimal Price, decimal? OriginalPrice, int Stock)>
         {
-            ("256GB", "Titan Tự Nhiên", 29990000, 10),
-            ("256GB", "Titan Trắng", 29990000, 15),
-            ("512GB", "Titan Tự Nhiên", 34990000, 5),
-            ("512GB", "Titan Trắng", 34990000, 8),
-            ("1TB", "Titan Đen", 41990000, 3)
+            ("256GB", "Titan Tự Nhiên", 29990000, 34990000, 10),
+            ("256GB", "Titan Trắng", 29990000, null, 15),
+            ("512GB", "Titan Tự Nhiên", 34990000, 39990000, 5),
+            ("512GB", "Titan Trắng", 34990000, null, 8),
+            ("1TB", "Titan Đen", 41990000, 48990000, 3)
         };
 
         foreach (var v in variants1)
@@ -494,6 +539,7 @@ END";
             {
                 SkuCode = $"IP15PM-{v.Size}-{v.Color.Replace(" ", "")}",
                 Price = v.Price,
+                OriginalPrice = v.OriginalPrice,
                 StockQuantity = v.Stock,
                 Size = v.Size,
                 Color = v.Color
@@ -512,13 +558,13 @@ END";
         };
         p2.Images.Add(new ProductImage { ImageUrl = "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=600", IsMain = true });
         
-        var variants2 = new List<(string Size, string Color, decimal Price, int Stock)>
+        var variants2 = new List<(string Size, string Color, decimal Price, decimal? OriginalPrice, int Stock)>
         {
-            ("Size M", "Trắng", 150000, 50),
-            ("Size M", "Đen", 150000, 50),
-            ("Size L", "Trắng", 160000, 40),
-            ("Size L", "Đen", 160000, 40),
-            ("Size XL", "Đen", 170000, 20)
+            ("Size M", "Trắng", 150000, 200000, 50),
+            ("Size M", "Đen", 150000, null, 50),
+            ("Size L", "Trắng", 160000, 220000, 40),
+            ("Size L", "Đen", 160000, null, 40),
+            ("Size XL", "Đen", 170000, 240000, 20)
         };
 
         foreach (var v in variants2)
@@ -527,6 +573,7 @@ END";
             {
                 SkuCode = $"TSHIRT-{v.Size}-{v.Color}",
                 Price = v.Price,
+                OriginalPrice = v.OriginalPrice,
                 StockQuantity = v.Stock,
                 Size = v.Size,
                 Color = v.Color

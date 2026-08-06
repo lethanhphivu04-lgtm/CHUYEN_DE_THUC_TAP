@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { productService, categoryService } from '../../_lib/api';
 
 export default function ProductPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +16,8 @@ export default function ProductPage() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
+  const [isDiscounted, setIsDiscounted] = useState(false);
+  const [onlyInStock, setOnlyInStock] = useState(false);
   const [sortBy, setSortBy] = useState('date-desc');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -29,6 +35,19 @@ export default function ProductPage() {
     fetchCategories();
   }, []);
 
+  // Sync URL query params to state
+  useEffect(() => {
+    const cat = searchParams.get('category');
+    const q = searchParams.get('search');
+    if (cat) {
+      setSelectedCategory(parseInt(cat));
+    } else {
+      setSelectedCategory(null);
+    }
+    setSearch(q || '');
+    setPage(1);
+  }, [searchParams]);
+
   // Fetch products
   const fetchProducts = async () => {
     setLoading(true);
@@ -38,6 +57,8 @@ export default function ProductPage() {
         categoryId: selectedCategory || undefined,
         minPrice: minPrice ? parseFloat(minPrice) : undefined,
         maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
+        isDiscounted: isDiscounted || undefined,
+        onlyInStock: onlyInStock || undefined,
         sortBy,
         page,
         pageSize: 9,
@@ -55,7 +76,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     fetchProducts();
-  }, [selectedCategory, sortBy, page]);
+  }, [selectedCategory, sortBy, page, isDiscounted, onlyInStock]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -74,8 +95,11 @@ export default function ProductPage() {
     setSelectedCategory(null);
     setMinPrice('');
     setMaxPrice('');
+    setIsDiscounted(false);
+    setOnlyInStock(false);
     setSortBy('date-desc');
     setPage(1);
+    router.push('/product');
   };
 
   const formatPrice = (price) => {
@@ -166,6 +190,32 @@ export default function ProductPage() {
                 Áp dụng lọc
               </button>
             </form>
+          </div>
+
+          {/* Advanced Criteria Filter */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+            <h3 className="font-bold text-slate-800 text-sm border-b pb-2 mb-2">Bộ lọc nâng cao</h3>
+            <div className="space-y-2 text-xs font-semibold text-slate-600">
+              <label className="flex items-center gap-2.5 cursor-pointer hover:text-slate-800 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={isDiscounted}
+                  onChange={(e) => { setIsDiscounted(e.target.checked); setPage(1); }}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                />
+                <span>⚡ Đang giảm giá</span>
+              </label>
+
+              <label className="flex items-center gap-2.5 cursor-pointer hover:text-slate-800 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={onlyInStock}
+                  onChange={(e) => { setOnlyInStock(e.target.checked); setPage(1); }}
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                />
+                <span>📦 Chỉ hiện còn hàng</span>
+              </label>
+            </div>
           </div>
 
           {/* Reset button */}

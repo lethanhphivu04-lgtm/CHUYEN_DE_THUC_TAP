@@ -6,6 +6,8 @@ public class ProductSku
     public int ProductId { get; set; }
     public string SkuCode { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public decimal? OriginalPrice { get; set; }
+    public DateTime? DiscountEndDate { get; set; }
     public int StockQuantity { get; set; }
     public string? Size { get; set; }
     public string? Color { get; set; }

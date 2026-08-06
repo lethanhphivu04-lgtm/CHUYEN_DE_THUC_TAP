@@ -22,8 +22,13 @@ export default function SellerDashboardPage() {
   const [newProductDesc, setNewProductDesc] = useState('');
   const [newProductCat, setNewProductCat] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductOriginalPrice, setNewProductOriginalPrice] = useState('');
   const [newProductStock, setNewProductStock] = useState('10');
   const [newProductImage, setNewProductImage] = useState('');
+  const [newProductDiscountEndDate, setNewProductDiscountEndDate] = useState('');
+  const [discountPercent, setDiscountPercent] = useState('');
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [submittingProduct, setSubmittingProduct] = useState(false);
 
   // Withdraw form state
@@ -121,6 +126,40 @@ export default function SellerDashboardPage() {
     }
   };
 
+  const handlePriceChange = (val) => {
+    setNewProductPrice(val);
+    const p = parseFloat(val);
+    const op = parseFloat(newProductOriginalPrice);
+    if (!isNaN(p) && !isNaN(op) && op > 0) {
+      const pct = Math.round(((op - p) / op) * 100);
+      setDiscountPercent(pct >= 0 ? pct.toString() : '0');
+    } else {
+      setDiscountPercent('');
+    }
+  };
+
+  const handleOriginalPriceChange = (val) => {
+    setNewProductOriginalPrice(val);
+    const op = parseFloat(val);
+    const p = parseFloat(newProductPrice);
+    if (!isNaN(op) && !isNaN(p) && op > 0) {
+      const pct = Math.round(((op - p) / op) * 100);
+      setDiscountPercent(pct >= 0 ? pct.toString() : '0');
+    } else {
+      setDiscountPercent('');
+    }
+  };
+
+  const handleDiscountPercentChange = (val) => {
+    setDiscountPercent(val);
+    const pct = parseFloat(val);
+    const op = parseFloat(newProductOriginalPrice);
+    if (!isNaN(pct) && !isNaN(op) && op > 0) {
+      const p = op * (1 - pct / 100);
+      setNewProductPrice(Math.round(p).toString());
+    }
+  };
+
   const handleProductSubmit = async (e) => {
     e.preventDefault();
     if (!newProductName.trim() || !newProductCat || !newProductPrice) {
@@ -134,16 +173,27 @@ export default function SellerDashboardPage() {
         description: newProductDesc.trim(),
         categoryId: parseInt(newProductCat),
         defaultPrice: parseFloat(newProductPrice),
+        defaultOriginalPrice: newProductOriginalPrice.trim() ? parseFloat(newProductOriginalPrice) : null,
+        defaultDiscountEndDate: newProductDiscountEndDate ? new Date(newProductDiscountEndDate).toISOString() : null,
         defaultStock: parseInt(newProductStock) || 10,
         images: newProductImage.trim() ? [{ imageUrl: newProductImage.trim(), isMain: true }] : []
       };
-      await productService.createProduct(payload);
-      alert('Đăng bán sản phẩm mới thành công!');
+      if (editingProduct) {
+        await productService.updateProduct(editingProduct.id, payload);
+        alert('Cập nhật sản phẩm thành công!');
+      } else {
+        await productService.createProduct(payload);
+        alert('Đăng bán sản phẩm mới thành công!');
+      }
       setIsProductModalOpen(false);
+      setEditingProduct(null);
       setNewProductName('');
       setNewProductDesc('');
       setNewProductCat('');
       setNewProductPrice('');
+      setNewProductOriginalPrice('');
+      setNewProductDiscountEndDate('');
+      setDiscountPercent('');
       setNewProductStock('10');
       setNewProductImage('');
       if (shop) {
@@ -151,9 +201,67 @@ export default function SellerDashboardPage() {
         setProducts(prodsData.products || prodsData.items || []);
       }
     } catch (err) {
-      alert(err.response?.data?.message || 'Không thể đăng bán sản phẩm.');
+      alert(err.response?.data?.message || 'Không thể lưu sản phẩm.');
     } finally {
       setSubmittingProduct(false);
+    }
+  };
+
+  const handleEditProduct = async (p) => {
+    try {
+      const detail = await productService.getProductById(p.id);
+      setEditingProduct(detail);
+      setNewProductName(detail.name || '');
+      setNewProductDesc(detail.description || '');
+      setNewProductCat(detail.categoryId?.toString() || '');
+      
+      const defaultSku = detail.skus?.[0];
+      if (defaultSku) {
+        setNewProductPrice(defaultSku.price?.toString() || '');
+        setNewProductOriginalPrice(defaultSku.originalPrice?.toString() || '');
+        setNewProductStock(defaultSku.stockQuantity?.toString() || '10');
+        
+        if (defaultSku.discountEndDate) {
+          const date = new Date(defaultSku.discountEndDate);
+          const localISO = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+          setNewProductDiscountEndDate(localISO);
+        } else {
+          setNewProductDiscountEndDate('');
+        }
+
+        if (defaultSku.originalPrice && defaultSku.price) {
+          const pct = Math.round(((defaultSku.originalPrice - defaultSku.price) / defaultSku.originalPrice) * 100);
+          setDiscountPercent(pct >= 0 ? pct.toString() : '0');
+        } else {
+          setDiscountPercent('');
+        }
+      } else {
+        setNewProductPrice('');
+        setNewProductOriginalPrice('');
+        setNewProductStock('10');
+        setNewProductDiscountEndDate('');
+        setDiscountPercent('');
+      }
+
+      setNewProductImage(detail.images?.find(i => i.isMain)?.imageUrl || detail.images?.[0]?.imageUrl || '');
+      setIsProductModalOpen(true);
+    } catch (err) {
+      alert('Không thể tải thông tin chi tiết sản phẩm để chỉnh sửa.');
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const data = await productService.uploadImage(file);
+      setNewProductImage(data.url);
+      alert('Tải ảnh lên thành công!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Lỗi tải ảnh lên từ máy tính.');
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -484,7 +592,7 @@ export default function SellerDashboardPage() {
           <div className="flex justify-between items-center border-b pb-3">
             <h2 className="font-bold text-slate-900 text-base">🛍️ Danh Sách Sản Phẩm Đang Bán</h2>
             <button
-              onClick={() => setIsProductModalOpen(true)}
+              onClick={() => { setEditingProduct(null); setIsProductModalOpen(true); }}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer"
             >
               + Đăng Sản Phẩm Mới
@@ -530,7 +638,13 @@ export default function SellerDashboardPage() {
                       <td className="py-3 pr-4 text-slate-600 font-medium">
                         {p.stockQuantity} sản phẩm
                       </td>
-                      <td className="py-3 text-right">
+                      <td className="py-3 text-right space-x-2">
+                        <button
+                          onClick={() => handleEditProduct(p)}
+                          className="text-amber-600 hover:text-amber-800 font-bold text-xs bg-amber-50 border border-amber-200 px-2.5 py-1 rounded transition-colors cursor-pointer"
+                        >
+                          Sửa
+                        </button>
                         <button
                           onClick={() => handleDeleteProduct(p.id)}
                           className="text-rose-500 hover:text-rose-700 font-bold text-xs bg-rose-50 border border-rose-200 px-2.5 py-1 rounded transition-colors cursor-pointer"
@@ -552,8 +666,8 @@ export default function SellerDashboardPage() {
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Đăng Bán Sản Phẩm Mới</h3>
-              <p className="text-xs text-slate-500 mt-1">Điền thông tin chi tiết cho sản phẩm của gian hàng bạn</p>
+              <h3 className="text-lg font-bold text-slate-900">{editingProduct ? 'Chỉnh Sửa Sản Phẩm' : 'Đăng Bán Sản Phẩm Mới'}</h3>
+              <p className="text-xs text-slate-500 mt-1">{editingProduct ? 'Cập nhật thông tin chi tiết cho sản phẩm của bạn' : 'Điền thông tin chi tiết cho sản phẩm của gian hàng bạn'}</p>
             </div>
 
             <form onSubmit={handleProductSubmit} className="space-y-4">
@@ -587,8 +701,8 @@ export default function SellerDashboardPage() {
                   </select>
                 </div>
 
-                {/* Price and Stock */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Price, Original Price and Stock */}
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1 text-xs">
                     <label className="font-semibold text-slate-700">Giá Bán (VND) *</label>
                     <input
@@ -596,14 +710,26 @@ export default function SellerDashboardPage() {
                       required
                       min={1000}
                       value={newProductPrice}
-                      onChange={(e) => setNewProductPrice(e.target.value)}
+                      onChange={(e) => handlePriceChange(e.target.value)}
                       placeholder="VD: 250000"
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
                     />
                   </div>
 
                   <div className="space-y-1 text-xs">
-                    <label className="font-semibold text-slate-700">Số Lượng Tồn Kho *</label>
+                    <label className="font-semibold text-slate-700">Giá Gốc (Gạch đi)</label>
+                    <input
+                      type="number"
+                      min={1000}
+                      value={newProductOriginalPrice}
+                      onChange={(e) => handleOriginalPriceChange(e.target.value)}
+                      placeholder="VD: 300000"
+                      className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    <label className="font-semibold text-slate-700">Tồn Kho *</label>
                     <input
                       type="number"
                       required
@@ -611,21 +737,82 @@ export default function SellerDashboardPage() {
                       value={newProductStock}
                       onChange={(e) => setNewProductStock(e.target.value)}
                       placeholder="VD: 50"
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="w-full px-2.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
                     />
                   </div>
                 </div>
 
-                {/* Main Image URL */}
-                <div className="space-y-1 text-xs">
-                  <label className="font-semibold text-slate-700">URL Hình Ảnh Sản Phẩm</label>
-                  <input
-                    type="url"
-                    value={newProductImage}
-                    onChange={(e) => setNewProductImage(e.target.value)}
-                    placeholder="VD: https://images.unsplash.com/..."
-                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                {/* Discount Percentage and Discount Expiry Date */}
+                {newProductOriginalPrice && parseFloat(newProductOriginalPrice) > 0 && (
+                  <div className="grid grid-cols-2 gap-3 bg-rose-50/50 p-3 rounded-xl border border-rose-100/60 animate-fade-in">
+                    <div className="space-y-1 text-xs">
+                      <label className="font-semibold text-rose-700">Khuyến Mãi (%)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={0}
+                          max={99}
+                          value={discountPercent}
+                          onChange={(e) => handleDiscountPercentChange(e.target.value)}
+                          placeholder="VD: 10"
+                          className="w-full pl-3 pr-8 py-2 border border-rose-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-xs text-rose-900 bg-white"
+                        />
+                        <span className="absolute right-3 top-2.5 text-rose-400 font-bold">%</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 text-xs">
+                      <label className="font-semibold text-rose-700">Hạn Dùng Giảm Giá</label>
+                      <input
+                        type="datetime-local"
+                        value={newProductDiscountEndDate}
+                        onChange={(e) => setNewProductDiscountEndDate(e.target.value)}
+                        className="w-full px-2.5 py-2 border border-rose-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 text-xs text-rose-900 bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Product Image Upload & URL */}
+                <div className="space-y-2 border border-slate-100 bg-slate-50/50 p-3 rounded-2xl">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-700">
+                    <span>Hình Ảnh Sản Phẩm</span>
+                    {uploadingImage && (
+                      <span className="text-indigo-600 animate-pulse text-[10px]">⚡ Đang tải ảnh lên...</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-500 font-semibold">Tải lên từ máy tính</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingImage}
+                        onChange={handleImageUpload}
+                        className="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-[11px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer disabled:opacity-50"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-500 font-semibold">Hoặc dán URL ảnh</label>
+                      <input
+                        type="url"
+                        value={newProductImage}
+                        onChange={(e) => setNewProductImage(e.target.value)}
+                        placeholder="https://example.com/image.png"
+                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+                      />
+                    </div>
+                  </div>
+                  {newProductImage && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <img
+                        src={newProductImage}
+                        alt="Preview"
+                        className="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white animate-fade-in"
+                      />
+                      <span className="text-[10px] text-slate-400 truncate max-w-[280px]">{newProductImage}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Description */}

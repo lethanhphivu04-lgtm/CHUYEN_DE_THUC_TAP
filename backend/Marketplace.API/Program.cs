@@ -1,4 +1,6 @@
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
 using Marketplace.API.Services;
 using Marketplace.Core.Entities;
@@ -65,6 +67,22 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
+});
+
+// Configure Rate Limiter (Chống Spam API: Tối đa 60 request/phút cho mỗi IP)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("FixedWindowPolicy", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
 });
 
 // Add CORS
@@ -136,11 +154,13 @@ app.UseSwaggerUI(c =>
 
 app.UseSerilogRequestLogging();
 app.UseCors("AllowAll");
+app.UseStaticFiles();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers().RequireRateLimiting("FixedWindowPolicy");
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
 // Seed Database Roles, Admin, Sellers, Categories, and Products
